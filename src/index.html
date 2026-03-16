@@ -1,13 +1,57 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Skribbl WS - Rooms</title>
+    <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="app">Hello world</div>
-    <script type="module" src="/server/server.ts"></script>
+    <div class="container">
+      <div id="errorBox" class="error"></div>
+
+      <section id="lobbyView" class="screen">
+        <div class="panel">
+          <div class="brand">Skribbl</div>
+          <div class="welcome">Bienvenue !</div>
+          <div class="row username-row">
+            <input id="usernameInput" type="text" maxlength="20" placeholder="username" />
+            <button id="validateUsernameBtn" class="small-btn" type="button">Valider</button>
+          </div>
+          <div id="validBox" class="valid"></div>
+          <div class="actions">
+            <button id="createRoomBtn" type="button">Créer une room</button>
+            <div class="or-line">ou</div>
+            <button id="goJoinViewBtn" type="button">Rejoindre une room</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="joinView" class="screen hidden">
+        <div class="panel">
+          <div class="join-title">LISTE DES ROOMS</div>
+          <div class="rooms-box">
+            <ul id="roomsList" class="rooms-list"></ul>
+          </div>
+          <div class="room-actions">
+            <button id="backLobbyBtn" type="button">Retour</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="roomView" class="screen hidden">
+        <div class="panel">
+          <div class="join-title">Salle d'attente</div>
+          <div id="roomInfo" class="room-meta muted"></div>
+          <ul id="playersList" class="players-list"></ul>
+          <div class="room-actions">
+            <button id="leaveRoomBtn" type="button">Quitter la room</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/app.js"></script>
   </body>
 </html>
