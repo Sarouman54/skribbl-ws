@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev:server": "nodemon --exec node --loader ts-node/esm server/server.ts",
+    "dev:server": "nodemon --watch server --ext ts --exec tsx server/server.ts",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
@@ -12,6 +12,7 @@
     "@types/express": "^5.0.6",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.3",
     "vite": "^7.0.0"
   },
