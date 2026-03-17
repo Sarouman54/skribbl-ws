@@ -123,6 +123,42 @@ export class RoomManager {
         return { ok: true, roomState: this.getPublicRoomState(room) };
     }
 
+    resumePlayer(oldSocketId: string, newSocketId: string): { ok: true; roomState: PublicRoomState } | { ok: false } {
+        const roomId = this.socketToRoom.get(oldSocketId);
+        if (!roomId) return { ok: false };
+
+        const room = this.rooms.get(roomId);
+        if (!room) return { ok: false };
+
+        const player = room.players.get(oldSocketId);
+        if (!player) return { ok: false };
+
+        room.players.delete(oldSocketId);
+        this.socketToRoom.delete(oldSocketId);
+
+        const resumed = { ...player, id: newSocketId };
+        room.players.set(newSocketId, resumed);
+        this.socketToRoom.set(newSocketId, roomId);
+
+        if (room.ownerId === oldSocketId) {
+            room.ownerId = newSocketId;
+        }
+
+        return { ok: true, roomState: this.getPublicRoomState(room) };
+    }
+
+    findDisconnectedPlayer(roomId: string, username: string): string | undefined {
+        const room = this.rooms.get(roomId);
+        if (!room) return undefined;
+
+        for (const [socketId, player] of room.players) {
+            if (player.username.toLowerCase() === username.toLowerCase()) {
+                return socketId;
+            }
+        }
+        return undefined;
+    }
+
     leaveRoom(socketId: string): LeaveRoomResult | null {
         const roomId = this.socketToRoom.get(socketId);
         if (!roomId) {

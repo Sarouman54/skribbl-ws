@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skribbl WS - Room</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div id="errorBox" class="error"></div>
+
+      <section id="roomView" class="screen">
+        <div class="panel">
+          <div class="join-title">Salle d'attente</div>
+          <div id="roomInfo" class="room-meta muted"></div>
+          <ul id="playersList" class="players-list"></ul>
+          <div class="room-actions">
+            <button id="startGameBtn" type="button">Lancer la partie</button>
+            <button id="leaveRoomBtn" type="button">Quitter la room</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="/room-app.ts"></script>
+  </body>
+</html>
