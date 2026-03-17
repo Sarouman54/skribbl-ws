@@ -5,85 +5,89 @@ import type { ClientPayload, JoinRoomPayload } from './room-manager.ts';
 const RECONNECT_GRACE_MS = 5000;
 
 function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
-    io.emit('rooms_list', roomManager.getRoomsList());
+	io.emit('rooms_list', roomManager.getRoomsList());
 }
 
 export function registerSocketHandlers(io: Server, roomManager: RoomManager): void {
-    const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
+	const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
 
-    io.on('connection', (socket) => {
-        socket.emit('rooms_list', roomManager.getRoomsList());
+	io.on('connection', (socket) => {
+		socket.emit('rooms_list', roomManager.getRoomsList());
 
-        socket.on('get_rooms', () => {
-            socket.emit('rooms_list', roomManager.getRoomsList());
-        });
+		socket.on('get_rooms', () => {
+			socket.emit('rooms_list', roomManager.getRoomsList());
+		});
 
-        socket.on('create_room', (payload: ClientPayload) => {
-            const result = roomManager.createRoom(socket.id, payload);
-            if (!result.ok) {
-                socket.emit('error_message', result.error);
-                return;
-            }
+		socket.on('create_room', (payload: ClientPayload) => {
+			const result = roomManager.createRoom(socket.id, payload);
+			if (!result.ok) {
+				socket.emit('error_message', result.error);
+				return;
+			}
 
-            socket.join(result.roomState.roomId);
-            io.to(result.roomState.roomId).emit('room_state', result.roomState);
-            broadcastRoomsList(io, roomManager);
-        });
+			socket.join(result.roomState.roomId);
+			io.to(result.roomState.roomId).emit('room_state', result.roomState);
+			broadcastRoomsList(io, roomManager);
+		});
 
-        socket.on('join_room', (payload: JoinRoomPayload) => {
-            const roomId = (payload?.roomId ?? '').trim().toUpperCase();
-            const username = (payload?.username ?? '').trim();
+		socket.on('join_room', (payload: JoinRoomPayload) => {
+			const roomId = (payload?.roomId ?? '').trim().toUpperCase();
+			const username = (payload?.username ?? '').trim();
 
-            const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
-            if (oldSocketId && pendingDisconnects.has(oldSocketId)) {
-                clearTimeout(pendingDisconnects.get(oldSocketId));
-                pendingDisconnects.delete(oldSocketId);
+			const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
+			if (oldSocketId && pendingDisconnects.has(oldSocketId)) {
+				clearTimeout(pendingDisconnects.get(oldSocketId));
+				pendingDisconnects.delete(oldSocketId);
 
-                const result = roomManager.resumePlayer(oldSocketId, socket.id);
-                if (result.ok) {
-                    socket.join(result.roomState.roomId);
-                    io.to(result.roomState.roomId).emit('room_state', result.roomState);
-                }
-                return;
-            }
+				const result = roomManager.resumePlayer(oldSocketId, socket.id);
+				if (result.ok) {
+					socket.join(result.roomState.roomId);
+					io.to(result.roomState.roomId).emit('room_state', result.roomState);
+				}
+				return;
+			}
 
-            const result = roomManager.joinRoom(socket.id, payload);
-            if (!result.ok) {
-                socket.emit('error_message', result.error);
-                return;
-            }
+			const result = roomManager.joinRoom(socket.id, payload);
+			if (!result.ok) {
+				socket.emit('error_message', result.error);
+				return;
+			}
 
-            socket.join(result.roomState.roomId);
-            io.to(result.roomState.roomId).emit('room_state', result.roomState);
-            broadcastRoomsList(io, roomManager);
-        });
+			socket.join(result.roomState.roomId);
+			io.to(result.roomState.roomId).emit('room_state', result.roomState);
+			broadcastRoomsList(io, roomManager);
+		});
 
-        socket.on('leave_room', () => {
-            const roomId = roomManager.getRoomIdForSocket(socket.id);
-            if (roomId) socket.leave(roomId);
+		socket.on('leave_room', () => {
+			const roomId = roomManager.getRoomIdForSocket(socket.id);
+			if (roomId) socket.leave(roomId);
 
-            const result = roomManager.leaveRoom(socket.id);
-            if (result?.roomState) {
-                io.to(result.roomId).emit('room_state', result.roomState);
-            }
+			const result = roomManager.leaveRoom(socket.id);
+			if (result?.roomState) {
+				io.to(result.roomId).emit('room_state', result.roomState);
+			}
 
-            broadcastRoomsList(io, roomManager);
-            socket.emit('left_room');
-        });
+			broadcastRoomsList(io, roomManager);
+			socket.emit('left_room');
+		});
 
-        socket.on('disconnect', () => {
-            if (!roomManager.getRoomIdForSocket(socket.id)) return;
+		socket.on('send_guess', (payload: { text: string }) => {
+			console.log('Message reçu côté serveur :', payload.text);
+		});
 
-            const timer = setTimeout(() => {
-                pendingDisconnects.delete(socket.id);
-                const result = roomManager.leaveRoom(socket.id);
-                if (result?.roomState) {
-                    io.to(result.roomId).emit('room_state', result.roomState);
-                }
-                broadcastRoomsList(io, roomManager);
-            }, RECONNECT_GRACE_MS);
+		socket.on('disconnect', () => {
+			if (!roomManager.getRoomIdForSocket(socket.id)) return;
 
-            pendingDisconnects.set(socket.id, timer);
-        });
-    });
+			const timer = setTimeout(() => {
+				pendingDisconnects.delete(socket.id);
+				const result = roomManager.leaveRoom(socket.id);
+				if (result?.roomState) {
+					io.to(result.roomId).emit('room_state', result.roomState);
+				}
+				broadcastRoomsList(io, roomManager);
+			}, RECONNECT_GRACE_MS);
+
+			pendingDisconnects.set(socket.id, timer);
+		});
+	});
 }
