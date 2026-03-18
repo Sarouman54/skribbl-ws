@@ -24,15 +24,15 @@ export function initChat(username: string) {
 		guessInput.value = '';
 	});
 
-	socket.on('chat_message', (payload: { player: string, text: string }) => {
-		addChatMessage(payload.player, payload.text, 'normal');
+	socket.on('chat_message', (payload: { player: string, text: string, type: string }) => {
+		addChatMessage(payload.player, payload.text, payload.type as 'normal' | 'almost' | 'success' );
 	});
 
 	socket.on('guess_success', (payload: { player: string, text: string }) => {
 		addChatMessage(payload.player, payload.text, 'success');
 	});
 
-	function addChatMessage(player: string, text: string, type: 'normal' | 'success') {
+	function addChatMessage(player: string, text: string, type: 'normal' | 'almost' | 'success') {
 		const li = document.createElement('li');
 
 		const playerSpan = document.createElement('strong');
@@ -41,8 +41,10 @@ export function initChat(username: string) {
 		const textSpan = document.createElement('span');
 		textSpan.textContent = text;
 
-		if (type === 'success') {
+		if ( type === 'success' ) {
 			li.style.backgroundColor = '#43ff64d9';
+		} else if ( type === 'almost' ) {
+			li.style.backgroundColor = '#ffa719cc';
 		}
 		li.style.listStyle = 'none';
 
