@@ -71,6 +71,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             const drawerId = roomManager.getRandomPlayer(roomId);
             if (!drawerId) return;
 
+            gameManager.startGame(roomId);
             const words = gameManager.getWords(roomId);
             io.to(roomId).emit('game_started', { drawerId });
             setTimeout(() => io.to(drawerId).emit('send_words', words), 500);

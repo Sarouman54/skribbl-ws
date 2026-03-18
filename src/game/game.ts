@@ -9,6 +9,12 @@ export function render(data: any) {
 }
 
 export function init() {
+  const leaveGameBtn = document.getElementById('leaveGameBtn') as HTMLButtonElement;
+
+  leaveGameBtn.addEventListener('click', () => {
+    socket.emit('leave_room');
+  });
+
   socket.on('send_words', (words: [string, string, string]) => {
     showWordChoice(words);
   });
