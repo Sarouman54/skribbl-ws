@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import { RoomManager } from './room-manager.ts';
+import { GameManager } from './game-manager.ts';
 import { registerSocketHandlers } from './socket-handlers.ts';
 
 const app = express();
@@ -13,7 +14,8 @@ const vite = await createViteServer({ server: { middlewareMode: true }, appType:
 app.use(vite.middlewares);
 
 const roomManager = new RoomManager();
-registerSocketHandlers(io, roomManager);
+const gameManager = new GameManager();
+registerSocketHandlers(io, roomManager, gameManager);
 
 const PORT = 3000;
 httpServer.listen(PORT, () => {

@@ -58,6 +58,19 @@ export class RoomManager {
         return this.socketToRoom.get(socketId);
     }
 
+    isRoomOwner(socketId: string): boolean {
+        const roomId = this.socketToRoom.get(socketId);
+        if (!roomId) return false;
+        return this.rooms.get(roomId)?.ownerId === socketId;
+    }
+
+    getRandomPlayer(roomId: string): string | undefined {
+        const room = this.rooms.get(roomId);
+        if (!room) return undefined;
+        const players = Array.from(room.players.keys());
+        return players[Math.floor(Math.random() * players.length)];
+    }
+
     createRoom(socketId: string, payload: ClientPayload):
         | { ok: true; roomState: PublicRoomState }
         | { ok: false; error: string } {

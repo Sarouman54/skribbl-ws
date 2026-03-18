@@ -28,9 +28,33 @@ export function render(roomState: PublicRoomState) {
 
 export function init() {
   const leaveRoomBtn = document.getElementById('leaveRoomBtn') as HTMLButtonElement;
+  const startGameBtn = document.getElementById('startGameBtn') as HTMLButtonElement;
 
   leaveRoomBtn.addEventListener('click', () => {
     clearError();
     socket.emit('leave_room');
   });
+
+  startGameBtn.addEventListener('click', () => {
+    socket.emit('start_game');
+  });
+
+  socket.on('send_words', (words: [string, string, string]) => {
+    showWordChoice(words);
+  });
+}
+
+function showWordChoice(words: [string, string, string]) {
+  const section = document.getElementById('wordChoice') as HTMLElement;
+  const buttons = section.querySelectorAll('button');
+
+  words.forEach((word, i) => {
+    buttons[i].textContent = word;
+    buttons[i].onclick = () => {
+      socket.emit('word_chosen', word);
+      section.classList.add('hidden');
+    };
+  });
+
+  section.classList.remove('hidden');
 }

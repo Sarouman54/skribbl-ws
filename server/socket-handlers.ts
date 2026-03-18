@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { RoomManager } from './room-manager.ts';
 import type { ClientPayload, JoinRoomPayload } from './room-manager.ts';
+import { GameManager } from './game-manager.ts';
 
 const RECONNECT_GRACE_MS = 5000;
 
@@ -8,7 +9,7 @@ function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
     io.emit('rooms_list', roomManager.getRoomsList());
 }
 
-export function registerSocketHandlers(io: Server, roomManager: RoomManager): void {
+export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager): void {
     const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
 
     io.on('connection', (socket) => {
@@ -56,6 +57,22 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager): vo
             socket.join(result.roomState.roomId);
             io.to(result.roomState.roomId).emit('room_state', result.roomState);
             broadcastRoomsList(io, roomManager);
+        });
+
+        socket.on('start_game', () => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            if (!roomManager.isRoomOwner(socket.id)) {
+                socket.emit('error_message', 'Seul l\'hôte peut lancer la partie.');
+                return;
+            }
+
+            const drawerId = roomManager.getRandomPlayer(roomId);
+            if (!drawerId) return;
+
+            const words = gameManager.getWords(roomId);
+            io.to(drawerId).emit('send_words', words);
         });
 
         socket.on('leave_room', () => {
