@@ -2,16 +2,53 @@
 
 import { socket } from '../utils/socket.ts';
 
-const guessInput: HTMLInputElement = document.getElementById('guessInput') as HTMLInputElement;
-const chatForm: HTMLFormElement = document.getElementById('chatForm') as HTMLFormElement;
+export function initChat(username: string) {
 
-chatForm?.addEventListener('submit', (e: Event) => {
-	e.preventDefault(); 
+	const guessInput: HTMLInputElement = document.getElementById('guessInput') as HTMLInputElement;
+	const chatForm: HTMLFormElement = document.getElementById('chatForm') as HTMLFormElement;
+	const chatMessages: HTMLUListElement = document.getElementById('chatMessages') as HTMLUListElement;
 
-	const guess = guessInput.value.trim();
-	if ( !guess ) return;
+	if (!guessInput || !chatForm || !chatMessages) {
+		console.error("Les éléments du chat sont introuvables dans le DOM.");
+		return;
+	}
 
-	socket.emit('send_guess', { text: guess });
+	chatForm?.addEventListener('submit', (e: Event) => {
+		e.preventDefault();
 
-	guessInput.value = '';
-});
+		const guess = guessInput.value.trim();
+		if (!guess) return;
+
+		socket.emit('send_guess', { player: username, text: guess });
+
+		guessInput.value = '';
+	});
+
+	socket.on('chat_message', (payload: { player: string, text: string }) => {
+		addChatMessage(payload.player, payload.text, 'normal');
+	});
+
+	socket.on('guess_success', (payload: { player: string, text: string }) => {
+		addChatMessage(payload.player, payload.text, 'success');
+	});
+
+	function addChatMessage(player: string, text: string, type: 'normal' | 'success') {
+		const li = document.createElement('li');
+
+		const playerSpan = document.createElement('strong');
+		playerSpan.textContent = `${player}: `;
+
+		const textSpan = document.createElement('span');
+		textSpan.textContent = text;
+
+		if (type === 'success') {
+			li.style.backgroundColor = '#43ff64d9';
+		}
+		li.style.listStyle = 'none';
+
+		li.appendChild(playerSpan);
+		li.appendChild(textSpan);
+		chatMessages.appendChild(li);
+	}
+
+}

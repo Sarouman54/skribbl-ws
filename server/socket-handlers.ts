@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { RoomManager } from './room-manager.ts';
 import type { ClientPayload, JoinRoomPayload } from './room-manager.ts';
 import { GameManager } from './game-manager.ts';
+import { ChatManager } from './chat-manager.ts';
 
 const RECONNECT_GRACE_MS = 5000;
 
@@ -9,7 +10,7 @@ function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
 	io.emit('rooms_list', roomManager.getRoomsList());
 }
 
-export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager): void {
+export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager, chatManager: ChatManager): void {
     const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
 
 	io.on('connection', (socket) => {
@@ -97,8 +98,8 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 			socket.emit('left_room');
 		});
 
-		socket.on('send_guess', (payload: { text: string }) => {
-			console.log('Message reçu côté serveur :', payload.text);
+		socket.on('send_guess', (payload: { player: string, text: string }) => {
+			chatManager.handleGuess(socket.id, payload);
 		});
 
 		socket.on('disconnect', () => {
