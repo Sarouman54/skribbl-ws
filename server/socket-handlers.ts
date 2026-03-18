@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { RoomManager } from './room-manager.ts';
 import type { ClientPayload, JoinRoomPayload } from './room-manager.ts';
+import { GameManager } from './game-manager.ts';
 
 const RECONNECT_GRACE_MS = 5000;
 
@@ -8,8 +9,8 @@ function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
 	io.emit('rooms_list', roomManager.getRoomsList());
 }
 
-export function registerSocketHandlers(io: Server, roomManager: RoomManager): void {
-	const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
+export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager): void {
+    const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
 
 	io.on('connection', (socket) => {
 		socket.emit('rooms_list', roomManager.getRoomsList());
@@ -58,9 +59,34 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager): vo
 			broadcastRoomsList(io, roomManager);
 		});
 
-		socket.on('leave_room', () => {
-			const roomId = roomManager.getRoomIdForSocket(socket.id);
-			if (roomId) socket.leave(roomId);
+        socket.on('start_game', () => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            if (!roomManager.isRoomOwner(socket.id)) {
+                socket.emit('error_message', "Seul l'hôte peut lancer la partie.");
+                return;
+            }
+
+            const drawerId = roomManager.getRandomPlayer(roomId);
+            if (!drawerId) return;
+
+            gameManager.startGame(roomId);
+            const words = gameManager.getWords(roomId);
+            io.to(roomId).emit('game_started', { drawerId });
+            setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+        });
+
+        socket.on('word_chosen', (word: string) => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            io.to(roomId).emit('drawing_started', { drawerId: socket.id, word });
+        });
+
+        socket.on('leave_room', () => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (roomId) socket.leave(roomId);
 
 			const result = roomManager.leaveRoom(socket.id);
 			if (result?.roomState) {

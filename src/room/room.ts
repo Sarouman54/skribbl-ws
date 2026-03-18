@@ -28,9 +28,14 @@ export function render(roomState: PublicRoomState) {
 
 export function init() {
   const leaveRoomBtn = document.getElementById('leaveRoomBtn') as HTMLButtonElement;
+  const startGameBtn = document.getElementById('startGameBtn') as HTMLButtonElement;
 
   leaveRoomBtn.addEventListener('click', () => {
     clearError();
     socket.emit('leave_room');
+  });
+
+  startGameBtn.addEventListener('click', () => {
+    socket.emit('start_game');
   });
 }

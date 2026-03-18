@@ -1,7 +1,6 @@
 import { socket } from './utils/socket.ts';
-import { showError, clearError } from './utils/error.ts';
-import type { PublicRoomState } from './utils/types.ts';
-import * as room from './room/room.ts';
+import { showError } from './utils/error.ts';
+import * as game from './game/game.ts';
 
 const stored = sessionStorage.getItem('skribbl_room');
 
@@ -14,18 +13,7 @@ if (!stored) {
     socket.emit('join_room', { roomId, username });
   });
 
-  room.init();
-
-  socket.on('room_state', (roomState: PublicRoomState) => {
-    const isInRoom = roomState.players.some((p) => p.id === socket.id);
-    if (!isInRoom) return;
-    clearError();
-    room.render(roomState);
-  });
-
-  socket.on('game_started', () => {
-    window.location.href = '/game.html';
-  });
+  game.init();
 
   socket.on('left_room', () => {
     sessionStorage.removeItem('skribbl_room');
