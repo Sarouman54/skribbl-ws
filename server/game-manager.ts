@@ -5,7 +5,7 @@ type GameState = {
     lastProposedTurn: Map<string, number>;
 };
 
-function weightedRandom(items: { word: string; weight: number }[]): string {
+function randomWordWeight(items: { word: string; weight: number }[]): string {
     const total = items.reduce((sum, { weight }) => sum + weight, 0);
     let r = Math.random() * total;
     for (const { word, weight } of items) {
@@ -35,7 +35,7 @@ export class GameManager {
                 word,
                 weight: state.currentTurn - (state.lastProposedTurn.get(word) ?? -1),
             }));
-            return weightedRandom(weighted);
+            return randomWordWeight(weighted);
         }) as [string, string, string];
 
         for (const word of words) {
