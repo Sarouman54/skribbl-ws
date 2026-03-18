@@ -2,6 +2,8 @@ import { socket } from './utils/socket.ts';
 import { showError, clearError } from './utils/error.ts';
 import type { PublicRoomState } from './utils/types.ts';
 import * as room from './room/room.ts';
+import * as game from './game/game.ts';
+import { navigateTo } from './utils/navigate.ts';
 
 const stored = sessionStorage.getItem('skribbl_room');
 
@@ -21,6 +23,11 @@ if (!stored) {
     if (!isInRoom) return;
     clearError();
     room.render(roomState);
+  });
+
+  socket.on('game_started', async (data) => {
+    await navigateTo('/game.html', () => game.init());
+    game.render(data);
   });
 
   socket.on('left_room', () => {

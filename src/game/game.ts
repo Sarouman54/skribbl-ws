@@ -1,5 +1,13 @@
 import { socket } from '../utils/socket.ts';
 
+export function render(data: any) {
+    const wordToDraw = document.getElementById('wordToDraw') as HTMLElement;
+
+    if (data.word) {
+        wordToDraw.textContent = `Mot à dessiner : ${data.word}`;
+    }
+}
+
 export function init() {
   socket.on('send_words', (words: [string, string, string]) => {
     showWordChoice(words);

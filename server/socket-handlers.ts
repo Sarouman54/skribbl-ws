@@ -64,7 +64,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (!roomId) return;
 
             if (!roomManager.isRoomOwner(socket.id)) {
-                socket.emit('error_message', 'Seul l\'hôte peut lancer la partie.');
+                socket.emit('error_message', "Seul l'hôte peut lancer la partie.");
                 return;
             }
 
@@ -72,14 +72,15 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (!drawerId) return;
 
             const words = gameManager.getWords(roomId);
-            io.to(drawerId).emit('send_words', words);
+            io.to(roomId).emit('game_started', { drawerId });
+            setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
         });
 
         socket.on('word_chosen', (word: string) => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (!roomId) return;
 
-            io.to(roomId).emit('game_started', { drawerId: socket.id, word });
+            io.to(roomId).emit('drawing_started', { drawerId: socket.id, word });
         });
 
         socket.on('leave_room', () => {
