@@ -75,6 +75,13 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             io.to(drawerId).emit('send_words', words);
         });
 
+        socket.on('word_chosen', (word: string) => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            io.to(roomId).emit('game_started', { drawerId: socket.id, word });
+        });
+
         socket.on('leave_room', () => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (roomId) socket.leave(roomId);
