@@ -64,11 +64,10 @@ export class RoomManager {
         return this.rooms.get(roomId)?.ownerId === socketId;
     }
 
-    getRandomPlayer(roomId: string): string | undefined {
+    getPlayerIds(roomId: string): string[] {
         const room = this.rooms.get(roomId);
-        if (!room) return undefined;
-        const players = Array.from(room.players.keys());
-        return players[Math.floor(Math.random() * players.length)];
+        if (!room) return [];
+        return Array.from(room.players.keys());
     }
 
     createRoom(socketId: string, payload: ClientPayload):

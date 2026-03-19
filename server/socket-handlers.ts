@@ -7,58 +7,84 @@ import { ChatManager } from './chat-manager.ts';
 const RECONNECT_GRACE_MS = 5000;
 
 function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
-	io.emit('rooms_list', roomManager.getRoomsList());
+    io.emit('rooms_list', roomManager.getRoomsList());
+}
+
+function startNextTurn(
+    io: Server,
+    roomId: string,
+    roomManager: RoomManager,
+    gameManager: GameManager,
+): void {
+    const drawerId = gameManager.nextDrawer(roomId);
+
+    if (drawerId === null) {
+        io.to(roomId).emit('manche_over');
+        return;
+    }
+
+    gameManager.startTurn(roomId, drawerId);
+    const words = gameManager.getWords(roomId);
+    const totalPlayers = roomManager.getPlayerIds(roomId).length;
+    io.to(roomId).emit('new_turn', { drawerId, totalPlayers });
+    setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
 }
 
 export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager, chatManager: ChatManager): void {
     const pendingDisconnects = new Map<string, ReturnType<typeof setTimeout>>();
 
-	io.on('connection', (socket) => {
-		socket.emit('rooms_list', roomManager.getRoomsList());
+    io.on('connection', (socket) => {
+        socket.emit('rooms_list', roomManager.getRoomsList());
 
-		socket.on('get_rooms', () => {
-			socket.emit('rooms_list', roomManager.getRoomsList());
-		});
+        socket.on('get_rooms', () => {
+            socket.emit('rooms_list', roomManager.getRoomsList());
+        });
 
-		socket.on('create_room', (payload: ClientPayload) => {
-			const result = roomManager.createRoom(socket.id, payload);
-			if (!result.ok) {
-				socket.emit('error_message', result.error);
-				return;
-			}
+        socket.on('create_room', (payload: ClientPayload) => {
+            const result = roomManager.createRoom(socket.id, payload);
+            if (!result.ok) {
+                socket.emit('error_message', result.error);
+                return;
+            }
 
-			socket.join(result.roomState.roomId);
-			io.to(result.roomState.roomId).emit('room_state', result.roomState);
-			broadcastRoomsList(io, roomManager);
-		});
+            socket.join(result.roomState.roomId);
+            io.to(result.roomState.roomId).emit('room_state', result.roomState);
+            broadcastRoomsList(io, roomManager);
+        });
 
-		socket.on('join_room', (payload: JoinRoomPayload) => {
-			const roomId = (payload?.roomId ?? '').trim().toUpperCase();
-			const username = (payload?.username ?? '').trim();
+        socket.on('join_room', (payload: JoinRoomPayload) => {
+            const roomId = (payload?.roomId ?? '').trim().toUpperCase();
+            const username = (payload?.username ?? '').trim();
 
-			const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
-			if (oldSocketId && pendingDisconnects.has(oldSocketId)) {
-				clearTimeout(pendingDisconnects.get(oldSocketId));
-				pendingDisconnects.delete(oldSocketId);
+            const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
+            if (oldSocketId && pendingDisconnects.has(oldSocketId)) {
+                clearTimeout(pendingDisconnects.get(oldSocketId));
+                pendingDisconnects.delete(oldSocketId);
 
-				const result = roomManager.resumePlayer(oldSocketId, socket.id);
-				if (result.ok) {
-					socket.join(result.roomState.roomId);
-					io.to(result.roomState.roomId).emit('room_state', result.roomState);
-				}
-				return;
-			}
+                const result = roomManager.resumePlayer(oldSocketId, socket.id);
+                if (result.ok) {
+                    socket.join(result.roomState.roomId);
+                    io.to(result.roomState.roomId).emit('room_state', result.roomState);
 
-			const result = roomManager.joinRoom(socket.id, payload);
-			if (!result.ok) {
-				socket.emit('error_message', result.error);
-				return;
-			}
+                    // Si le joueur qui reconnecte est le drawer en attente de choisir un mot
+                    const pending = gameManager.getPendingWords(result.roomState.roomId);
+                    if (pending && gameManager.getDrawerId(result.roomState.roomId) === socket.id) {
+                        socket.emit('send_words', pending);
+                    }
+                }
+                return;
+            }
 
-			socket.join(result.roomState.roomId);
-			io.to(result.roomState.roomId).emit('room_state', result.roomState);
-			broadcastRoomsList(io, roomManager);
-		});
+            const result = roomManager.joinRoom(socket.id, payload);
+            if (!result.ok) {
+                socket.emit('error_message', result.error);
+                return;
+            }
+
+            socket.join(result.roomState.roomId);
+            io.to(result.roomState.roomId).emit('room_state', result.roomState);
+            broadcastRoomsList(io, roomManager);
+        });
 
         socket.on('start_game', () => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
@@ -69,52 +95,67 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
                 return;
             }
 
-            const drawerId = roomManager.getRandomPlayer(roomId);
-            if (!drawerId) return;
+            const playerIds = roomManager.getPlayerIds(roomId);
+            if (playerIds.length < 2) return;
 
-            gameManager.startGame(roomId);
-            const words = gameManager.getWords(roomId);
-            io.to(roomId).emit('game_started', { drawerId });
-            setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+            gameManager.startGame(roomId, playerIds);
+            const drawerId = gameManager.nextDrawer(roomId)!;
+            gameManager.startTurn(roomId, drawerId);
+            gameManager.getWords(roomId); // stores in pendingWords, sent when drawer reconnects on game.html
+
+            io.to(roomId).emit('game_started', { drawerId, totalPlayers: playerIds.length });
         });
 
         socket.on('word_chosen', (word: string) => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (!roomId) return;
 
+            gameManager.setWord(roomId, word);
             io.to(roomId).emit('drawing_started', { drawerId: socket.id, word });
+        });
+
+        socket.on('send_guess', (payload: { player: string; text: string }) => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            const result = chatManager.handleGuess(socket.id, payload);
+
+            if (result.isCorrect && result.recorded) {
+                const guessedCount = gameManager.getGuessedCount(roomId);
+                const totalPlayers = roomManager.getPlayerIds(roomId).length;
+                // -1 because drawer doesn't guess
+                if (guessedCount >= totalPlayers - 1) {
+                    startNextTurn(io, roomId, roomManager, gameManager);
+                }
+            }
         });
 
         socket.on('leave_room', () => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (roomId) socket.leave(roomId);
 
-			const result = roomManager.leaveRoom(socket.id);
-			if (result?.roomState) {
-				io.to(result.roomId).emit('room_state', result.roomState);
-			}
+            const result = roomManager.leaveRoom(socket.id);
+            if (result?.roomState) {
+                io.to(result.roomId).emit('room_state', result.roomState);
+            }
 
-			broadcastRoomsList(io, roomManager);
-			socket.emit('left_room');
-		});
+            broadcastRoomsList(io, roomManager);
+            socket.emit('left_room');
+        });
 
-		socket.on('send_guess', (payload: { player: string, text: string }) => {
-			chatManager.handleGuess(socket.id, payload);
-		});
+        socket.on('disconnect', () => {
+            if (!roomManager.getRoomIdForSocket(socket.id)) return;
 
-		socket.on('disconnect', () => {
-			if (!roomManager.getRoomIdForSocket(socket.id)) return;
+            const timer = setTimeout(() => {
+                pendingDisconnects.delete(socket.id);
+                const result = roomManager.leaveRoom(socket.id);
+                if (result?.roomState) {
+                    io.to(result.roomId).emit('room_state', result.roomState);
+                }
+                broadcastRoomsList(io, roomManager);
+            }, RECONNECT_GRACE_MS);
 
-			const timer = setTimeout(() => {
-				pendingDisconnects.delete(socket.id);
-				const result = roomManager.leaveRoom(socket.id);
-				if (result?.roomState) {
-					io.to(result.roomId).emit('room_state', result.roomState);
-				}
-				broadcastRoomsList(io, roomManager);
-			}, RECONNECT_GRACE_MS);
-
-			pendingDisconnects.set(socket.id, timer);
-		});
-	});
+            pendingDisconnects.set(socket.id, timer);
+        });
+    });
 }

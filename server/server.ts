@@ -16,7 +16,7 @@ app.use(vite.middlewares);
 
 const roomManager = new RoomManager();
 const gameManager = new GameManager();
-const chatManager = new ChatManager(io, roomManager); 
+const chatManager = new ChatManager(io, roomManager, gameManager);
 registerSocketHandlers(io, roomManager, gameManager, chatManager);
 
 const PORT = 3000;
