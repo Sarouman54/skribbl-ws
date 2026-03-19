@@ -24,6 +24,20 @@
 		</section>
 
 		<section id="gameView" class="screen">
+			<div class="game-layout">
+				<div class="canvas-panel">
+					<div class="canvas-header">
+						<div id="wordToDraw" class="join-title">En attente du mot...</div>
+						<div class="canvas-controls">
+							<span id="canvasRole" class="muted">Crayon noir par defaut</span>
+							<button id="clearCanvasBtn" type="button" class="small-btn">Effacer</button>
+						</div>
+					</div>
+					<div id="canvasArea" class="canvas-area">
+						<canvas id="drawCanvas"></canvas>
+						<div id="brushCursor" class="brush-cursor"></div>
+					</div>
+				</div>
 
 			<div id="chatComponent" class="chat-container">
 				<div class="chat-header">Chat</div>
@@ -35,6 +49,7 @@
 						autocomplete="off" />
 					<button type="submit" id="sendGuess">Envoyer</button>
 				</form>
+			</div>
 			</div>
 
 			<button id="leaveGameBtn" type="button">Quitter la partie</button>
