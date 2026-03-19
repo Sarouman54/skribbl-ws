@@ -180,6 +180,12 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             io.to(roomId).emit('canvas_color', payload);
         });
 
+        socket.on('canvas_fill', (payload: { x: number; y: number; color: string }) => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+            io.to(roomId).emit('canvas_fill', payload);
+        });
+
         socket.on('leave_room', () => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (roomId) socket.leave(roomId);

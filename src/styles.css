@@ -226,6 +226,24 @@ body {
   box-shadow: 0 0 0 2px #2a2a2a;
 }
 
+.canvas-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-btn {
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.tool-btn.is-active {
+  border-color: #2a2a2a;
+  background: #dddddd;
+  font-weight: 700;
+}
+
 .canvas-area {
   position: relative;
   border: 1px solid #bdbdbd;
