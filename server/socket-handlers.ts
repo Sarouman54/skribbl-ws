@@ -130,7 +130,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
       if (!roomId) return;
 
       gameManager.setWord(roomId, word);
-      io.to(roomId).emit("drawing_started", { drawerId: socket.id, word });
+      io.to(roomId).emit("drawing_started", { drawerId: socket.id, wordLength: word.length });
 
       if (gameTimers.has(roomId)) {
         clearTimeout(gameTimers.get(roomId));
