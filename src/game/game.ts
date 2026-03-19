@@ -36,8 +36,9 @@ export function init() {
 
     socket.on('manche_over', () => {
         const wordToDraw = document.getElementById('wordToDraw') as HTMLElement;
-        wordToDraw.textContent = 'Manche terminée ! Bien joué.';
+        wordToDraw.textContent = 'Manche terminée ! Retour au lobby...';
         setChatEnabled(false);
+        setTimeout(() => { window.location.href = '/'; }, 3000);
     });
 }
 
