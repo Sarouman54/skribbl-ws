@@ -3,7 +3,7 @@ export type ClientPayload = {
 };
 
 export type JoinRoomPayload = {
-    roomId: string;
+    join: string;
     username: string;
 };
 
@@ -104,7 +104,7 @@ export class RoomManager {
         | { ok: true; roomState: PublicRoomState }
         | { ok: false; error: string } {
         const username = this.sanitizeUsername(payload?.username ?? '');
-        const roomId = (payload?.roomId ?? '').trim().toUpperCase();
+        const roomId = (payload?.join ?? '').trim().toUpperCase();
 
         if (!this.isUsernameValid(username)) {
             return {

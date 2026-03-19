@@ -14,7 +14,7 @@ export function init(onGoJoin: () => void) {
   createRoomBtn.addEventListener('click', () => {
     if (!validateUsernameOrShowError()) return;
     clearError();
-    socket.emit('create_room', { username: getUsername() });
+    socket.emit('create_room', { username: getUsername(), join: '' });
   });
 
   goJoinViewBtn.addEventListener('click', () => {

@@ -31,17 +31,19 @@ function startNextTurn(
         }
     }
 
-    const drawerId = gameManager.nextDrawer(roomId);
+    setTimeout(() => {
+        const drawerId = gameManager.nextDrawer(roomId);
 
-    if (drawerId === null) {
-        io.to(roomId).emit('manche_over');
-        return;
-    }
+        if (drawerId === null) {
+            io.to(roomId).emit('round_end');
+            return;
+        }
 
-    gameManager.startTurn(roomId, drawerId);
-    const words = gameManager.getWords(roomId);
-    io.to(roomId).emit('new_turn', { drawerId, totalPlayers });
-    setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+        gameManager.startTurn(roomId, drawerId);
+        const words = gameManager.getWords(roomId);
+        io.to(roomId).emit('round_start', { drawerId, totalPlayers });
+        setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+    }, 5000);
 }
 
 export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager, chatManager: ChatManager): void {
@@ -57,7 +59,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
         socket.on('create_room', (payload: ClientPayload) => {
             const result = roomManager.createRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error_message', result.error);
+                socket.emit('error', result.error);
                 return;
             }
 
@@ -67,7 +69,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
         });
 
         socket.on('join_room', (payload: JoinRoomPayload) => {
-            const roomId = (payload?.roomId ?? '').trim().toUpperCase();
+            const roomId = (payload?.join ?? '').trim().toUpperCase();
             const username = (payload?.username ?? '').trim();
 
             const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
@@ -94,7 +96,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 
             const result = roomManager.joinRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error_message', result.error);
+                socket.emit('error', result.error);
                 return;
             }
 
@@ -108,7 +110,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (!roomId) return;
 
       if (!roomManager.isRoomOwner(socket.id)) {
-        socket.emit("error_message", "Seul l'hôte peut lancer la partie.");
+        socket.emit("error", "Seul l'hôte peut lancer la partie.");
         return;
       }
 

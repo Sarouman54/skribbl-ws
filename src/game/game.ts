@@ -106,7 +106,7 @@ export function init() {
     }
   });
 
-  socket.on("new_turn", (data: { drawerId: string }) => {
+  socket.on("round_start", (data: { drawerId: string }) => {
     const wordToDraw = document.getElementById("wordToDraw") as HTMLElement;
     const isDrawer = data.drawerId === socket.id;
 
@@ -123,7 +123,7 @@ export function init() {
     }
   });
 
-    socket.on('manche_over', () => {
+    socket.on('round_end', () => {
         const wordToDraw = document.getElementById('wordToDraw') as HTMLElement;
         wordToDraw.textContent = 'Manche terminée ! Retour au lobby...';
         setChatEnabled(false);
