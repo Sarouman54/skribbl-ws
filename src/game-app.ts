@@ -3,6 +3,8 @@ import { showError } from './utils/error.ts';
 import * as game from './game/game.ts';
 import { initChat } from './chat/chat.ts';
 
+import type { PublicRoomState } from './utils/types.ts';
+
 const stored = sessionStorage.getItem('skribbl_room');
 
 if (!stored) {
@@ -16,6 +18,10 @@ if (!stored) {
 
 	game.init();
 	initChat(username);
+
+	socket.on('room_state', (roomState: PublicRoomState) => {
+		game.renderPlayers(roomState);
+	});
 
 	socket.on('left_room', () => {
 		sessionStorage.removeItem('skribbl_room');

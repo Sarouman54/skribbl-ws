@@ -82,7 +82,30 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (!roomId) return;
 
+            gameManager.startRound(roomId, socket.id, word);
             io.to(roomId).emit('drawing_started', { drawerId: socket.id, word });
+        });
+
+        socket.on('end_round', () => {
+            const roomId = roomManager.getRoomIdForSocket(socket.id);
+            if (!roomId) return;
+
+            const roomState = roomManager.getPublicRoomStateById(roomId);
+            if (!roomState) return;
+
+            const drawerScore = gameManager.getDrawerScore(roomId, roomState.players.length);
+            const drawerId = gameManager.getDrawerId(roomId);
+
+            if (drawerId && drawerScore > 0) {
+                roomManager.updatePlayerScore(roomId, drawerId, drawerScore);
+            }
+
+            const updatedState = roomManager.getPublicRoomStateById(roomId);
+            if (updatedState) {
+                io.to(roomId).emit('room_state', updatedState);
+            }
+
+            io.to(roomId).emit('round_ended');
         });
 
         socket.on('leave_room', () => {
