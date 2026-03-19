@@ -4,6 +4,7 @@ type TurnState = {
     drawerId: string;
     word: string | null;
     pendingWords: [string, string, string] | null;
+    guessedBy: Set<string>;
     guessers: Map<string, { timestamp: number; score: number }>;
     startTime?: number;
     totalTime: number;
@@ -51,7 +52,8 @@ export class GameManager {
         state.turn = { 
             drawerId, 
             word: null, 
-            pendingWords: null, 
+            pendingWords: null,
+            guessedBy: new Set(),
             guessers: new Map(), 
             totalTime: 80 
         };

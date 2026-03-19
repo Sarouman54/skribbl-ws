@@ -17,6 +17,20 @@ function startNextTurn(
   roomManager: RoomManager,
   gameManager: GameManager,
 ): void {
+    const totalPlayers = roomManager.getPlayerIds(roomId).length;
+
+    const currentDrawerId = gameManager.getDrawerId(roomId);
+    const drawerScore = gameManager.getDrawerScore(roomId, totalPlayers);
+
+    if (currentDrawerId && drawerScore > 0) {
+        roomManager.updatePlayerScore(roomId, currentDrawerId, drawerScore);
+
+        const updatedState = roomManager.getPublicRoomStateById(roomId);
+        if (updatedState) {
+            io.to(roomId).emit("room_state", updatedState);
+        }
+    }
+
     const drawerId = gameManager.nextDrawer(roomId);
 
     if (drawerId === null) {
@@ -26,7 +40,6 @@ function startNextTurn(
 
     gameManager.startTurn(roomId, drawerId);
     const words = gameManager.getWords(roomId);
-    const totalPlayers = roomManager.getPlayerIds(roomId).length;
     io.to(roomId).emit('new_turn', { drawerId, totalPlayers });
     setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
 }

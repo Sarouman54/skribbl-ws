@@ -23,7 +23,6 @@ export class ChatManager {
 
 		const secretWord = this.gameManager.getWord(roomId);
 
-		// Si pas de mot secret (partie non lancée), on traite comme un chat normal
 		if (!secretWord) {
 			this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
 			return { isCorrect: false, recorded: false };
@@ -35,20 +34,16 @@ export class ChatManager {
 		if (isCorrect) {
 			const result = this.gameManager.guessWord(roomId, socketId);
 			if (result.success) {
-				// Mettre à jour le score du Guesser
 				this.roomManager.updatePlayerScore(roomId, socketId, result.score || 0);
 
-				// Émettre le succès
 				this.io.to(roomId).emit('guess_success', { player, text: `${player} a trouvé le mot !` });
 
-				// Diffuser le nouvel état avec scores
 				const roomState = this.roomManager.getPublicRoomStateById(roomId);
 				if (roomState) {
 					this.io.to(roomId).emit('room_state', roomState);
 				}
 				return { isCorrect: true, recorded: true };
 			} else {
-				// Déjà deviné ou dessinateur
 				return { isCorrect: true, recorded: false };
 			}
 		} else if (isAlmostCorrect) {
