@@ -60,6 +60,14 @@ export class GameManager {
         return this.games.get(roomId)?.turn?.pendingWords ?? null;
     }
 
+    updateDrawerId(roomId: string, oldId: string, newId: string): void {
+        const state = this.games.get(roomId);
+        if (!state?.turn) return;
+        if (state.turn.drawerId === oldId) {
+            state.turn.drawerId = newId;
+        }
+    }
+
     getWord(roomId: string): string | null {
         return this.games.get(roomId)?.turn?.word ?? null;
     }

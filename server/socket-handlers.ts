@@ -57,16 +57,21 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             const username = (payload?.username ?? '').trim();
 
             const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
-            if (oldSocketId && pendingDisconnects.has(oldSocketId)) {
-                clearTimeout(pendingDisconnects.get(oldSocketId));
-                pendingDisconnects.delete(oldSocketId);
+            if (oldSocketId && oldSocketId !== socket.id) {
+                // Annule le timer de déconnexion s'il existe (peut ne pas exister encore à cause d'une race condition)
+                if (pendingDisconnects.has(oldSocketId)) {
+                    clearTimeout(pendingDisconnects.get(oldSocketId));
+                    pendingDisconnects.delete(oldSocketId);
+                }
 
                 const result = roomManager.resumePlayer(oldSocketId, socket.id);
                 if (result.ok) {
                     socket.join(result.roomState.roomId);
                     io.to(result.roomState.roomId).emit('room_state', result.roomState);
 
-                    // Si le joueur qui reconnecte est le drawer en attente de choisir un mot
+                    // Met à jour le drawer ID dans le game manager si c'est le drawer qui reconnecte
+                    gameManager.updateDrawerId(result.roomState.roomId, oldSocketId, socket.id);
+
                     const pending = gameManager.getPendingWords(result.roomState.roomId);
                     if (pending && gameManager.getDrawerId(result.roomState.roomId) === socket.id) {
                         socket.emit('send_words', pending);
