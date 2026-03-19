@@ -68,7 +68,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
                     socket.join(result.roomState.roomId);
                     io.to(result.roomState.roomId).emit('room_state', result.roomState);
 
-                    gameManager.updateDrawerId(result.roomState.roomId, oldSocketId, socket.id);
+                    gameManager.updateSocketId(result.roomState.roomId, oldSocketId, socket.id);
 
                     const pending = gameManager.getPendingWords(result.roomState.roomId);
                     if (pending && gameManager.getDrawerId(result.roomState.roomId) === socket.id) {
