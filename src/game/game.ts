@@ -89,7 +89,6 @@ export function init() {
     }
     setChatEnabled(!isDrawer);
 
-    // --- GESTION DU TIMER LOCAL ---
     if (gameTimer) {
       let timeLeft = 80;
       gameTimer.textContent = `⏱️ ${timeLeft}s`;

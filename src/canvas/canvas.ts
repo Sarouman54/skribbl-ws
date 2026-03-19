@@ -227,6 +227,13 @@ export function initCanvas() {
 		clearCanvas(true);
 	});
 
+	socket.on('new_turn', () => {
+		canDraw = false;
+		setRoleUI();
+		setBrushColor(DEFAULT_COLOR, false);
+		clearCanvas(true);
+	});
+
 	resizeCanvas();
 	setBrushColor(DEFAULT_COLOR, false);
 	setRoleUI();
