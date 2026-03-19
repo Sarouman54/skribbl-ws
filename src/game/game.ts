@@ -2,6 +2,7 @@ import { socket } from "../utils/socket.ts";
 import type { PublicRoomState } from "../utils/types.ts";
 
 let timerInterval: any = null;
+let currentWord = '';
 
 export function render(data: any) {
   const wordToDraw = document.getElementById("wordToDraw") as HTMLElement;
@@ -79,13 +80,13 @@ export function init() {
     showWordChoice(words);
   });
 
-  socket.on("drawing_started", (data: { drawerId: string; word: string }) => {
+  socket.on("drawing_started", (data: { drawerId: string; wordLength: number }) => {
     const wordToDraw = document.getElementById("wordToDraw") as HTMLElement;
     const isDrawer = data.drawerId === socket.id;
     if (wordToDraw) {
       wordToDraw.textContent = isDrawer
-        ? `Mot à dessiner : ${data.word}`
-        : "Devinez le mot !";
+        ? `Mot à dessiner : ${currentWord}`
+        : Array(data.wordLength).fill('_').join(' ');
     }
     setChatEnabled(!isDrawer);
 
@@ -137,6 +138,7 @@ function showWordChoice(words: [string, string, string]) {
     words.forEach((word, i) => {
         buttons[i].textContent = word;
         buttons[i].onclick = () => {
+            currentWord = word;
             socket.emit('word_chosen', word);
             section.classList.add('hidden');
         };
