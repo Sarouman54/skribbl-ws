@@ -1,5 +1,3 @@
-// server/chat-manager.ts
-
 import { Server } from "socket.io";
 import { RoomManager } from "./room-manager";
 import { GameManager } from "./game-manager";
@@ -12,19 +10,23 @@ export class ChatManager {
 		private gameManager: GameManager
 	) {}
 
-	handleGuess(socketId: string, payload: { player: string, text: string }): void {
+	handleGuess(socketId: string, payload: { player: string; text: string }): { isCorrect: boolean; recorded: boolean } {
 		const roomId = this.roomManager.getRoomIdForSocket(socketId);
-		if (!roomId) return;
+		if (!roomId) return { isCorrect: false, recorded: false };
 
 		const text = payload.text.trim();
 		const player = payload.player;
 
-		const secretWord = this.gameManager.getSecretWord(roomId);
+		if (this.gameManager.getDrawerId(roomId) === socketId) {
+			return { isCorrect: false, recorded: false };
+		}
+
+		const secretWord = this.gameManager.getWord(roomId);
 
 		// Si pas de mot secret (partie non lancée), on traite comme un chat normal
 		if (!secretWord) {
 			this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
-			return;
+			return { isCorrect: false, recorded: false };
 		}
 
 		const isCorrect = (text.toLowerCase() === secretWord.toLowerCase());
@@ -44,11 +46,17 @@ export class ChatManager {
 				if (roomState) {
 					this.io.to(roomId).emit('room_state', roomState);
 				}
+				return { isCorrect: true, recorded: true };
+			} else {
+				// Déjà deviné ou dessinateur
+				return { isCorrect: true, recorded: false };
 			}
 		} else if (isAlmostCorrect) {
 			this.io.to(roomId).emit('chat_message', { player, text: `${player} est proche du mot !`, type: 'almost' });
 		} else {
 			this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
 		}
+
+		return { isCorrect: false, recorded: false };
 	}
 }

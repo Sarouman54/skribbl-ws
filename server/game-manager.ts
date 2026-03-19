@@ -1,118 +1,147 @@
 import { WORDS } from './words.ts';
 
-type GameState = {
-    currentTurn: number;
-    lastProposedTurn: Map<string, number>;
-    usedInGame: Set<string>;
-    drawerId?: string;
-    secretWord?: string;
+type TurnState = {
+    drawerId: string;
+    word: string | null;
+    pendingWords: [string, string, string] | null;
+    guessers: Map<string, { timestamp: number; score: number }>;
     startTime?: number;
     totalTime: number;
-    guessers: Map<string, { timestamp: number; score: number }>;
 };
 
-function randomWordWeight(items: { word: string; weight: number }[]): string {
-    const total = items.reduce((sum, { weight }) => sum + weight, 0);
-    let r = Math.random() * total;
-    for (const { word, weight } of items) {
-        r -= weight;
-        if (r <= 0) return word;
+type GameState = {
+    usedInGame: Set<string>;
+    remainingDrawers: string[];
+    turn: TurnState | null;
+};
+
+function shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
     }
-    return items[items.length - 1].word;
+    return a;
+}
+
+function pickRandom<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
 }
 
 export class GameManager {
-    private readonly games = new Map<string, GameState>();
+    private games = new Map<string, GameState>();
 
-    startGame(roomId: string): void {
+    startGame(roomId: string, playerIds: string[]): void {
         this.games.set(roomId, {
-            currentTurn: 0,
-            lastProposedTurn: new Map(),
             usedInGame: new Set(),
-            totalTime: 80, // 80 secondes par défaut
-            guessers: new Map(),
+            remainingDrawers: shuffle(playerIds),
+            turn: null,
         });
     }
 
-    startRound(roomId: string, drawerId: string, word: string): void {
+    nextDrawer(roomId: string): string | null {
+        const state = this.games.get(roomId);
+        if (!state) return null;
+        return state.remainingDrawers.shift() ?? null;
+    }
+
+    startTurn(roomId: string, drawerId: string): void {
         const state = this.games.get(roomId);
         if (!state) return;
-        state.drawerId = drawerId;
-        state.secretWord = word;
-        state.startTime = Date.now();
-        state.guessers.clear();
+        state.turn = { 
+            drawerId, 
+            word: null, 
+            pendingWords: null, 
+            guessers: new Map(), 
+            totalTime: 80 
+        };
+    }
+
+    setWord(roomId: string, word: string): void {
+        const state = this.games.get(roomId);
+        if (!state?.turn) return;
+        state.turn.word = word;
+        state.turn.pendingWords = null;
+        state.turn.startTime = Date.now();
+    }
+
+    getPendingWords(roomId: string): [string, string, string] | null {
+        return this.games.get(roomId)?.turn?.pendingWords ?? null;
+    }
+
+    updateDrawerId(roomId: string, oldId: string, newId: string): void {
+        const state = this.games.get(roomId);
+        if (!state?.turn) return;
+        if (state.turn.drawerId === oldId) {
+            state.turn.drawerId = newId;
+        }
     }
 
     guessWord(roomId: string, socketId: string): { success: boolean; score?: number; isFirst?: boolean } {
         const state = this.games.get(roomId);
-        if (!state || !state.secretWord || !state.startTime) return { success: false };
+        if (!state?.turn || !state.turn.word || !state.turn.startTime) return { success: false };
 
-        if (socketId === state.drawerId) return { success: false };
-        if (state.guessers.has(socketId)) return { success: false };
+        if (socketId === state.turn.drawerId) return { success: false };
+        if (state.turn.guessers.has(socketId)) return { success: false };
 
-        const elapsedTime = (Date.now() - state.startTime) / 1000;
-        const timeLeft = Math.max(0, state.totalTime - elapsedTime);
+        const elapsedTime = (Date.now() - state.turn.startTime) / 1000;
+        const timeLeft = Math.max(0, state.turn.totalTime - elapsedTime);
 
-        // Formule de l'image 3 : S_dev = 100 + (400 * T_restant / 80)
-        let score = 100 + (400 * timeLeft / state.totalTime);
+        let score = 100 + (400 * timeLeft / state.turn.totalTime);
         score = Math.round(score);
 
-        const isFirst = state.guessers.size === 0;
-        if (isFirst) {
-            score += 50; // Bonus +50 pt pour le premier
-        }
+        const isFirst = state.turn.guessers.size === 0;
+        if (isFirst) score += 50;
 
-        state.guessers.set(socketId, { timestamp: Date.now(), score });
+        state.turn.guessers.set(socketId, { timestamp: Date.now(), score });
         return { success: true, score, isFirst };
     }
 
     getDrawerScore(roomId: string, totalPlayers: number): number {
         const state = this.games.get(roomId);
-        if (!state || totalPlayers <= 1) return 0;
+        if (!state?.turn || totalPlayers <= 1) return 0;
 
-        const nSuccess = state.guessers.size;
-        const nTotal = totalPlayers;
-
+        const nSuccess = state.turn.guessers.size;
         if (nSuccess === 0) return 0;
 
-        // Formule de l'image 2 : S_des = 300 * (N_succès / (N_total - 1))
-        const score = 300 * (nSuccess / (nTotal - 1));
+        const score = 300 * (nSuccess / (totalPlayers - 1));
         return Math.round(score);
     }
 
-    getSecretWord(roomId: string): string | undefined {
-        return this.games.get(roomId)?.secretWord;
+    getWord(roomId: string): string | null {
+        return this.games.get(roomId)?.turn?.word ?? null;
     }
 
-    getDrawerId(roomId: string): string | undefined {
-        return this.games.get(roomId)?.drawerId;
+    getDrawerId(roomId: string): string | null {
+        return this.games.get(roomId)?.turn?.drawerId ?? null;
+    }
+
+    getGuessedCount(roomId: string): number {
+        return this.games.get(roomId)?.turn?.guessers.size ?? 0;
     }
 
     getWords(roomId: string): [string, string, string] {
         const state = this.games.get(roomId);
         if (!state) throw new Error(`Aucune partie en cours pour la room ${roomId}`);
 
-        const categories = Object.keys(WORDS).sort(() => Math.random() - 0.5).slice(0, 3);
+        const categories = shuffle(Object.keys(WORDS)).slice(0, 3);
 
         const words = categories.map((cat) => {
-            const weighted = WORDS[cat]
-                .filter((word) => !state.usedInGame.has(word))
-                .map((word) => ({
-                    word,
-                    weight: state.currentTurn - (state.lastProposedTurn.get(word) ?? -1),
-                }));
-
-            return randomWordWeight(weighted);
+            const available = WORDS[cat].filter((word) => !state.usedInGame.has(word));
+            return pickRandom(available);
         }) as [string, string, string];
 
         for (const word of words) {
             state.usedInGame.add(word);
-            state.lastProposedTurn.set(word, state.currentTurn);
         }
-        state.currentTurn++;
+
+        if (state.turn) {
+            state.turn.pendingWords = words;
+        }
 
         return words;
     }
+
 
     deleteGame(roomId: string): void {
         this.games.delete(roomId);

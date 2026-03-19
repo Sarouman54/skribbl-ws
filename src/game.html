@@ -25,6 +25,13 @@
 
 		<section id="gameView" class="screen">
 
+			<div
+				style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; padding: 0 10px;">
+				<div id="gameTimer" style="font-weight: bold; color: #e74c3c; font-size: 1.1rem;">⏱️ 80s</div>
+			</div>
+
+			<div id="wordToDraw" class="word-to-draw">En attente…</div>
+
 			<div id="chatComponent" class="chat-container">
 				<div class="chat-header">Chat</div>
 
@@ -43,26 +50,12 @@
 					<ul id="playersList" class="players-list"></ul>
 				</div>
 
-				<!-- Mock Controls -->
-				<div class="panel" style="min-height: auto; background: #fffdf5;">
-					<div class="welcome" style="margin-bottom: 8px; color: #d35400;">🔧 Simulation Score</div>
-					
-					<div style="margin-bottom: 10px; font-size: 0.9rem; background: #fdf6ec; padding: 6px; border-radius: 4px; border: 1px solid #f5e7d3;">
-						<div>🎨 Dessinateur: <span id="mockDrawer" style="font-weight: bold; color: #e67e22;">-</span></div>
-						<div>⏱️ Temps restant: <span id="mockTimer" style="font-weight: bold; color: #e74c3c;">80</span>s</div>
-					</div>
-
-					<div class="actions" style="gap: 5px;">
-						<input type="text" id="mockWord" placeholder="Mot secret (ex: Lapin)" style="margin-bottom: 5px;">
-						<button id="btnStartRound" type="button" style="background: #e67e22; color: white; border: none;">▶️ Démarrer Manche</button>
-						<button id="btnEndRound" type="button" style="background: #e74c3c; color: white; border: none;">⏹️ Terminer Manche</button>
-					</div>
-				</div>
 			</div>
 
 			<button id="leaveGameBtn" type="button" style="margin-top: 10px;">Quitter la partie</button>
 		</section>
 	</div>
+
 	<script type="module" src="./game-app.ts"></script>
 </body>
 

@@ -13,10 +13,9 @@ const io = new Server(httpServer);
 
 const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
 app.use(vite.middlewares);
-
 const roomManager = new RoomManager();
 const gameManager = new GameManager();
-const chatManager = new ChatManager(io, roomManager, gameManager); 
+const chatManager = new ChatManager(io, roomManager, gameManager);
 registerSocketHandlers(io, roomManager, gameManager, chatManager);
 
 const PORT = 3000;
