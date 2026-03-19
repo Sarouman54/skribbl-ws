@@ -67,8 +67,6 @@ export function init() {
     "leaveGameBtn",
   ) as HTMLButtonElement;
   const gameTimer = document.getElementById("gameTimer");
-  const gameOverScreen = document.getElementById("gameOverScreen");
-  const finalRankingList = document.getElementById("finalRankingList");
 
   if (leaveGameBtn) {
     leaveGameBtn.addEventListener("click", () => {
