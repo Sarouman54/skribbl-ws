@@ -1,5 +1,3 @@
-// src/chat.ts
-
 import { socket } from '../utils/socket.ts';
 
 export function initChat(username: string) {

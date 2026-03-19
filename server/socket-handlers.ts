@@ -58,7 +58,6 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 
             const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
             if (oldSocketId && oldSocketId !== socket.id) {
-                // Annule le timer de déconnexion s'il existe (peut ne pas exister encore à cause d'une race condition)
                 if (pendingDisconnects.has(oldSocketId)) {
                     clearTimeout(pendingDisconnects.get(oldSocketId));
                     pendingDisconnects.delete(oldSocketId);
@@ -69,7 +68,6 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
                     socket.join(result.roomState.roomId);
                     io.to(result.roomState.roomId).emit('room_state', result.roomState);
 
-                    // Met à jour le drawer ID dans le game manager si c'est le drawer qui reconnecte
                     gameManager.updateDrawerId(result.roomState.roomId, oldSocketId, socket.id);
 
                     const pending = gameManager.getPendingWords(result.roomState.roomId);
@@ -106,7 +104,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             gameManager.startGame(roomId, playerIds);
             const drawerId = gameManager.nextDrawer(roomId)!;
             gameManager.startTurn(roomId, drawerId);
-            gameManager.getWords(roomId); // stores in pendingWords, sent when drawer reconnects on game.html
+            gameManager.getWords(roomId);
 
             io.to(roomId).emit('game_started', { drawerId, totalPlayers: playerIds.length });
         });
@@ -128,7 +126,6 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (result.isCorrect && result.recorded) {
                 const guessedCount = gameManager.getGuessedCount(roomId);
                 const totalPlayers = roomManager.getPlayerIds(roomId).length;
-                // -1 because drawer doesn't guess
                 if (guessedCount >= totalPlayers - 1) {
                     startNextTurn(io, roomId, roomManager, gameManager);
                 }
