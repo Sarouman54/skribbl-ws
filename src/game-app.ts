@@ -2,6 +2,7 @@ import { socket } from './utils/socket.ts';
 import { showError } from './utils/error.ts';
 import * as game from './game/game.ts';
 import { initChat } from './chat/chat.ts';
+import { initCanvas } from './canvas/canvas.ts';
 
 const stored = sessionStorage.getItem('skribbl_room');
 
@@ -15,6 +16,7 @@ if (!stored) {
 	});
 
 	game.init();
+	initCanvas();
 	initChat(username);
 
 	socket.on('left_room', () => {
