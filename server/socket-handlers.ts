@@ -116,6 +116,13 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 			io.to(roomId).emit('canvas_clear');
 		});
 
+		socket.on('canvas_color', (payload: { color: string }) => {
+			const roomId = roomManager.getRoomIdForSocket(socket.id);
+			if (!roomId) return;
+
+			io.to(roomId).emit('canvas_color', payload);
+		});
+
 		socket.on('disconnect', () => {
 			if (!roomManager.getRoomIdForSocket(socket.id)) return;
 

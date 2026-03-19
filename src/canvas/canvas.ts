@@ -9,6 +9,10 @@ type DrawPayload = {
 	size: number;
 };
 
+type ColorPayload = {
+	color: string;
+};
+
 const DEFAULT_COLOR = '#000000';
 const DEFAULT_SIZE = 6;
 
@@ -23,11 +27,20 @@ export function initCanvas() {
 	const cursor = document.getElementById('brushCursor') as HTMLDivElement | null;
 	const clearBtn = document.getElementById('clearCanvasBtn') as HTMLButtonElement | null;
 	const roleLabel = document.getElementById('canvasRole') as HTMLSpanElement | null;
+	const palette = document.getElementById('colorPalette') as HTMLDivElement | null;
 
-	if (!canvas || !canvasArea || !cursor || !clearBtn || !roleLabel) return;
+	if (!canvas || !canvasArea || !cursor || !clearBtn || !roleLabel || !palette) return;
 
 	const ctx = canvas.getContext('2d');
 	if (!ctx) return;
+
+	const canvasEl = canvas;
+	const canvasAreaEl = canvasArea;
+	const cursorEl = cursor;
+	const clearBtnEl = clearBtn;
+	const roleLabelEl = roleLabel;
+	const paletteEl = palette;
+	const ctx2d = ctx;
 
 	let canDraw = true;
 	let isDrawing = false;
@@ -37,38 +50,61 @@ export function initCanvas() {
 		color: DEFAULT_COLOR,
 		size: DEFAULT_SIZE,
 	};
+	const swatches = Array.from(paletteEl.querySelectorAll<HTMLButtonElement>('.color-swatch'));
+
+	function setCursorColor(color: string) {
+		cursorEl.style.background = color;
+		cursorEl.style.borderColor = color;
+	}
+
+	function setActiveSwatch(color: string) {
+		swatches.forEach((btn) => {
+			const isActive = btn.dataset.color === color;
+			btn.classList.toggle('is-active', isActive);
+		});
+	}
+
+	function setBrushColor(color: string, shouldBroadcast: boolean) {
+		brush.color = color;
+		setCursorColor(color);
+		setActiveSwatch(color);
+		if (shouldBroadcast) {
+			socket.emit('canvas_color', { color });
+		}
+	}
 
 	function setRoleUI() {
-		roleLabel.textContent = canDraw ? 'Tu dessines (crayon noir)' : 'Tu devines';
-		clearBtn.disabled = !canDraw;
+		roleLabelEl.textContent = canDraw ? 'Tu dessines' : 'Tu devines';
+		clearBtnEl.classList.toggle('hidden', !canDraw);
+		paletteEl.classList.toggle('hidden', !canDraw);
 	}
 
 	function resizeCanvas() {
-		const rect = canvasArea.getBoundingClientRect();
+		const rect = canvasAreaEl.getBoundingClientRect();
 		const ratio = window.devicePixelRatio || 1;
 
 		const prev = document.createElement('canvas');
-		prev.width = canvas.width;
-		prev.height = canvas.height;
+		prev.width = canvasEl.width;
+		prev.height = canvasEl.height;
 		const prevCtx = prev.getContext('2d');
 		if (prevCtx) {
-			prevCtx.drawImage(canvas, 0, 0);
+			prevCtx.drawImage(canvasEl, 0, 0);
 		}
 
-		canvas.width = Math.floor(rect.width * ratio);
-		canvas.height = Math.floor(rect.height * ratio);
+		canvasEl.width = Math.floor(rect.width * ratio);
+		canvasEl.height = Math.floor(rect.height * ratio);
 
-		ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-		ctx.lineCap = 'round';
-		ctx.lineJoin = 'round';
+		ctx2d.setTransform(ratio, 0, 0, ratio, 0, 0);
+		ctx2d.lineCap = 'round';
+		ctx2d.lineJoin = 'round';
 
 		if (prev.width > 0 && prev.height > 0) {
-			ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, rect.width, rect.height);
+			ctx2d.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, rect.width, rect.height);
 		}
 	}
 
 	function pointerPos(evt: PointerEvent) {
-		const rect = canvas.getBoundingClientRect();
+		const rect = canvasEl.getBoundingClientRect();
 		return {
 			x: evt.clientX - rect.left,
 			y: evt.clientY - rect.top,
@@ -78,12 +114,12 @@ export function initCanvas() {
 	}
 
 	function drawLine(x0: number, y0: number, x1: number, y1: number, color: string, size: number) {
-		ctx.strokeStyle = color;
-		ctx.lineWidth = size;
-		ctx.beginPath();
-		ctx.moveTo(x0, y0);
-		ctx.lineTo(x1, y1);
-		ctx.stroke();
+		ctx2d.strokeStyle = color;
+		ctx2d.lineWidth = size;
+		ctx2d.beginPath();
+		ctx2d.moveTo(x0, y0);
+		ctx2d.lineTo(x1, y1);
+		ctx2d.stroke();
 	}
 
 	function emitLine(x0: number, y0: number, x1: number, y1: number, w: number, h: number) {
@@ -99,25 +135,25 @@ export function initCanvas() {
 	}
 
 	function clearCanvas(localOnly = false) {
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx2d.clearRect(0, 0, canvasEl.width, canvasEl.height);
 		if (!localOnly) {
 			socket.emit('canvas_clear');
 		}
 	}
 
-	canvas.addEventListener('pointerenter', () => {
-		cursor.style.opacity = '1';
+	canvasEl.addEventListener('pointerenter', () => {
+		cursorEl.style.opacity = '1';
 	});
 
-	canvas.addEventListener('pointerleave', () => {
-		cursor.style.opacity = '0';
+	canvasEl.addEventListener('pointerleave', () => {
+		cursorEl.style.opacity = '0';
 		isDrawing = false;
 	});
 
-	canvas.addEventListener('pointermove', (evt) => {
+	canvasEl.addEventListener('pointermove', (evt) => {
 		const pos = pointerPos(evt);
-		cursor.style.left = `${pos.x}px`;
-		cursor.style.top = `${pos.y}px`;
+		cursorEl.style.left = `${pos.x}px`;
+		cursorEl.style.top = `${pos.y}px`;
 
 		if (!isDrawing || !canDraw) return;
 
@@ -126,7 +162,7 @@ export function initCanvas() {
 		last = { x: pos.x, y: pos.y };
 	});
 
-	canvas.addEventListener('pointerdown', (evt) => {
+	canvasEl.addEventListener('pointerdown', (evt) => {
 		if (!canDraw) return;
 		isDrawing = true;
 		const pos = pointerPos(evt);
@@ -140,13 +176,22 @@ export function initCanvas() {
 		isDrawing = false;
 	});
 
-	clearBtn.addEventListener('click', () => {
+	clearBtnEl.addEventListener('click', () => {
 		if (!canDraw) return;
 		clearCanvas(false);
 	});
 
+		swatches.forEach((btn) => {
+		btn.addEventListener('click', () => {
+			if (!canDraw) return;
+			const color = btn.dataset.color;
+			if (!color) return;
+			setBrushColor(color, true);
+		});
+	});
+
 	socket.on('canvas_draw', (payload: DrawPayload) => {
-		const rect = canvas.getBoundingClientRect();
+		const rect = canvasEl.getBoundingClientRect();
 		drawLine(
 			payload.x0 * rect.width,
 			payload.y0 * rect.height,
@@ -161,19 +206,29 @@ export function initCanvas() {
 		clearCanvas(true);
 	});
 
+	socket.on('canvas_color', (payload: ColorPayload) => {
+		setCursorColor(payload.color);
+		if (canDraw) {
+			setActiveSwatch(payload.color);
+		}
+	});
+
 	socket.on('drawing_started', (data: { drawerId: string }) => {
 		canDraw = data.drawerId === socket.id;
 		setRoleUI();
+		setBrushColor(DEFAULT_COLOR, canDraw);
 		clearCanvas(true);
 	});
 
 	socket.on('game_started', () => {
 		canDraw = false;
 		setRoleUI();
+		setBrushColor(DEFAULT_COLOR, false);
 		clearCanvas(true);
 	});
 
 	resizeCanvas();
+	setBrushColor(DEFAULT_COLOR, false);
 	setRoleUI();
 	window.addEventListener('resize', resizeCanvas);
 }
