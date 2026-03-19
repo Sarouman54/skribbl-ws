@@ -26,8 +26,8 @@ export function initChat(username: string) {
 		addChatMessage(payload.player, payload.text, payload.type as 'normal' | 'almost' | 'success' );
 	});
 
-	socket.on('guess_success', (payload: { player: string, text: string }) => {
-		addChatMessage(payload.player, payload.text, 'success');
+	socket.on('guess_success', (payload: { player: string, message: string }) => {
+		addChatMessage(payload.player, payload.message, 'success');
 	});
 
 	function addChatMessage(player: string, text: string, type: 'normal' | 'almost' | 'success') {

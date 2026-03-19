@@ -18,7 +18,7 @@ socket.on('disconnect', () => {
   showError('Connexion perdue avec le serveur.');
 });
 
-socket.on('error_message', (message: string) => {
+socket.on('error', (message: string) => {
   showError(message);
 });
 

@@ -1,8 +1,8 @@
-import { Server } from 'socket.io';
-import { RoomManager } from './room-manager.ts';
-import type { ClientPayload, JoinRoomPayload } from './room-manager.ts';
-import { GameManager } from './game-manager.ts';
-import { ChatManager } from './chat-manager.ts';
+import { Server } from "socket.io";
+import { RoomManager } from "./room-manager.ts";
+import type { ClientPayload, JoinRoomPayload } from "./room-manager.ts";
+import { GameManager } from "./game-manager.ts";
+import { ChatManager } from "./chat-manager.ts";
 
 const RECONNECT_GRACE_MS = 5000;
 const gameTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -11,28 +11,39 @@ function broadcastRoomsList(io: Server, roomManager: RoomManager): void {
     io.emit('rooms_list', roomManager.getRoomsList());
 }
 
-function startNextTurn(io: Server, roomId: string, roomManager: RoomManager, gameManager: GameManager): void {
+function startNextTurn(
+  io: Server,
+  roomId: string,
+  roomManager: RoomManager,
+  gameManager: GameManager,
+): void {
     const totalPlayers = roomManager.getPlayerIds(roomId).length;
+
     const currentDrawerId = gameManager.getDrawerId(roomId);
     const drawerScore = gameManager.getDrawerScore(roomId, totalPlayers);
 
     if (currentDrawerId && drawerScore > 0) {
         roomManager.updatePlayerScore(roomId, currentDrawerId, drawerScore);
+
         const updatedState = roomManager.getPublicRoomStateById(roomId);
-        if (updatedState) io.to(roomId).emit('room_state', updatedState);
+        if (updatedState) {
+            io.to(roomId).emit("room_state", updatedState);
+        }
     }
 
-    const drawerId = gameManager.nextDrawer(roomId);
+    setTimeout(() => {
+        const drawerId = gameManager.nextDrawer(roomId);
 
-    if (drawerId === null) {
-        io.to(roomId).emit('manche_over');
-        return;
-    }
+        if (drawerId === null) {
+            io.to(roomId).emit('round_end');
+            return;
+        }
 
-    gameManager.startTurn(roomId, drawerId);
-    const words = gameManager.getWords(roomId);
-    io.to(roomId).emit('new_turn', { drawerId, totalPlayers });
-    setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+        gameManager.startTurn(roomId, drawerId);
+        const words = gameManager.getWords(roomId);
+        io.to(roomId).emit('round_start', { drawerId, totalPlayers });
+        setTimeout(() => io.to(drawerId).emit('send_words', words), 500);
+    }, 5000);
 }
 
 export function registerSocketHandlers(io: Server, roomManager: RoomManager, gameManager: GameManager, chatManager: ChatManager): void {
@@ -48,7 +59,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
         socket.on('create_room', (payload: ClientPayload) => {
             const result = roomManager.createRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error_message', result.error);
+                socket.emit('error', result.error);
                 return;
             }
             socket.join(result.roomState.roomId);
@@ -57,7 +68,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
         });
 
         socket.on('join_room', (payload: JoinRoomPayload) => {
-            const roomId = (payload?.roomId ?? '').trim().toUpperCase();
+            const roomId = (payload?.join ?? '').trim().toUpperCase();
             const username = (payload?.username ?? '').trim();
 
             const oldSocketId = roomManager.findDisconnectedPlayer(roomId, username);
@@ -83,7 +94,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 
             const result = roomManager.joinRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error_message', result.error);
+                socket.emit('error', result.error);
                 return;
             }
             socket.join(result.roomState.roomId);
@@ -96,51 +107,60 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (!roomId) return;
 
             if (!roomManager.isRoomOwner(socket.id)) {
-                socket.emit('error_message', "Seul l'hôte peut lancer la partie.");
+                socket.emit("error", "Seul l'hôte peut lancer la partie.");
                 return;
             }
 
-            const playerIds = roomManager.getPlayerIds(roomId);
-            if (playerIds.length < 2) return;
+      const playerIds = roomManager.getPlayerIds(roomId);
+      if (playerIds.length < 2) return;
 
-            gameManager.startGame(roomId, playerIds);
-            const drawerId = gameManager.nextDrawer(roomId)!;
-            gameManager.startTurn(roomId, drawerId);
-            gameManager.getWords(roomId);
-            io.to(roomId).emit('game_started', { drawerId, totalPlayers: playerIds.length });
-        });
+      gameManager.startGame(roomId, playerIds);
+      const drawerId = gameManager.nextDrawer(roomId)!;
+      gameManager.startTurn(roomId, drawerId);
+      gameManager.getWords(roomId);
 
-        socket.on('word_chosen', (word: string) => {
-            const roomId = roomManager.getRoomIdForSocket(socket.id);
-            if (!roomId) return;
+      io.to(roomId).emit("game_started", {
+        drawerId,
+        totalPlayers: playerIds.length,
+      });
+    });
 
-            gameManager.setWord(roomId, word);
-            io.to(roomId).emit('drawing_started', { drawerId: socket.id, word });
+    socket.on("word_chosen", (word: string) => {
+      const roomId = roomManager.getRoomIdForSocket(socket.id);
+      if (!roomId) return;
 
-            if (gameTimers.has(roomId)) clearTimeout(gameTimers.get(roomId));
-            gameTimers.set(roomId, setTimeout(() => {
-                startNextTurn(io, roomId, roomManager, gameManager);
-            }, 80000));
-        });
+      gameManager.setWord(roomId, word);
+      io.to(roomId).emit("drawing_started", { drawerId: socket.id, word });
 
-        socket.on('send_guess', (payload: { player: string; text: string }) => {
-            const roomId = roomManager.getRoomIdForSocket(socket.id);
-            if (!roomId) return;
+      if (gameTimers.has(roomId)) {
+        clearTimeout(gameTimers.get(roomId));
+      }
 
-            const result = chatManager.handleGuess(socket.id, payload);
+      const timer = setTimeout(() => {
+        startNextTurn(io, roomId, roomManager, gameManager);
+      }, 80000); // 80s
 
-            if (result.isCorrect && result.recorded) {
-                const guessedCount = gameManager.getGuessedCount(roomId);
-                const totalPlayers = roomManager.getPlayerIds(roomId).length;
-                if (guessedCount >= totalPlayers - 1) {
-                    if (gameTimers.has(roomId)) {
-                        clearTimeout(gameTimers.get(roomId));
-                        gameTimers.delete(roomId);
-                    }
-                    startNextTurn(io, roomId, roomManager, gameManager);
-                }
-            }
-        });
+      gameTimers.set(roomId, timer);
+    });
+
+    socket.on("send_guess", (payload: { player: string; text: string }) => {
+      const roomId = roomManager.getRoomIdForSocket(socket.id);
+      if (!roomId) return;
+
+      const result = chatManager.handleGuess(socket.id, payload);
+
+      if (result.isCorrect && result.recorded) {
+        const guessedCount = gameManager.getGuessedCount(roomId);
+        const totalPlayers = roomManager.getPlayerIds(roomId).length;
+        if (guessedCount >= totalPlayers - 1) {
+          if (gameTimers.has(roomId)) {
+            clearTimeout(gameTimers.get(roomId));
+            gameTimers.delete(roomId);
+          }
+          startNextTurn(io, roomId, roomManager, gameManager);
+        }
+      }
+    });
 
         socket.on('canvas_draw', (payload: { x0: number; y0: number; x1: number; y1: number; color: string; size: number }) => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);

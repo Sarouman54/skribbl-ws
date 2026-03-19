@@ -11,7 +11,7 @@ if (!stored) {
   const { roomId, username } = JSON.parse(stored) as { roomId: string; username: string };
 
   socket.on('connect', () => {
-    socket.emit('join_room', { roomId, username });
+    socket.emit('join_room', { join: roomId, username });
   });
 
   room.init();
@@ -32,7 +32,7 @@ if (!stored) {
     window.location.href = '/';
   });
 
-  socket.on('error_message', (message: string) => {
+  socket.on('error', (message: string) => {
     showError(message);
   });
 

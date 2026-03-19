@@ -33,7 +33,7 @@ export function renderRoomsList(rooms: PublicRoomSummary[]) {
     joinBtn.addEventListener('click', () => {
       if (!validateUsernameOrShowError()) return;
       clearError();
-      socket.emit('join_room', { roomId: room.roomId, username: getUsername() });
+      socket.emit('join_room', { join: room.roomId, username: getUsername() });
     });
 
     item.appendChild(label);

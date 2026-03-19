@@ -36,7 +36,7 @@ export class ChatManager {
 			if (result.success) {
 				this.roomManager.updatePlayerScore(roomId, socketId, result.score || 0);
 
-				this.io.to(roomId).emit('guess_success', { player, text: `${player} a trouvé le mot !` });
+				this.io.to(roomId).emit('guess_success', { player, message: `${player} a trouvé le mot !` });
 
 				const roomState = this.roomManager.getPublicRoomStateById(roomId);
 				if (roomState) {
