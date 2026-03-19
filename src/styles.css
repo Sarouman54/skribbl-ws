@@ -219,6 +219,35 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-palette {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  border: 1px solid #525252;
+  padding: 0;
+  min-height: 20px;
+}
+
+.color-swatch[data-color="#000000"] { background: #000000; }
+.color-swatch[data-color="#d62828"] { background: #d62828; }
+.color-swatch[data-color="#2a9d8f"] { background: #2a9d8f; }
+.color-swatch[data-color="#1d4ed8"] { background: #1d4ed8; }
+.color-swatch[data-color="#f59e0b"] { background: #f59e0b; }
+.color-swatch[data-color="#8b5cf6"] { background: #8b5cf6; }
+
+.color-swatch.is-active {
+  outline: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #2a2a2a;
 }
 
 .canvas-area {
