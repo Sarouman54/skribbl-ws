@@ -5,10 +5,13 @@ export type Player = {
 };
 
 export type PublicRoomState = {
-  roomId: string;
-  ownerId: string;
-  ownerUsername: string;
+  room_id: string;
+  host: string;
   players: Player[];
+  max_players: number;
+  status: string;
+  round: number;
+  round_time: number;
 };
 
 export type PublicRoomSummary = {

@@ -18,8 +18,8 @@ socket.on('disconnect', () => {
   showError('Connexion perdue avec le serveur.');
 });
 
-socket.on('error', (message: string) => {
-  showError(message);
+socket.on('error', (payload: { message: string }) => {
+  showError(payload.message);
 });
 
 socket.on('rooms_list', (rooms: PublicRoomSummary[]) => {
@@ -29,6 +29,6 @@ socket.on('rooms_list', (rooms: PublicRoomSummary[]) => {
 socket.on('room_state', (roomState: PublicRoomState) => {
   const me = roomState.players.find((p) => p.id === socket.id);
   if (!me) return;
-  sessionStorage.setItem('skribbl_room', JSON.stringify({ roomId: roomState.roomId, username: me.username }));
+  sessionStorage.setItem('skribbl_room', JSON.stringify({ roomId: roomState.room_id, username: me.username }));
   window.location.href = '/room.html';
 });

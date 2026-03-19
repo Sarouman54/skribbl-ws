@@ -1,12 +1,11 @@
 import { socket } from '../utils/socket.ts';
 
 type DrawPayload = {
-	x0: number;
-	y0: number;
-	x1: number;
-	y1: number;
+	x: number;
+	y: number;
 	color: string;
-	size: number;
+	width: number;
+	type: 'start' | 'move' | 'end';
 };
 
 type ColorPayload = {
@@ -69,7 +68,7 @@ export function initCanvas() {
 		setCursorColor(color);
 		setActiveSwatch(color);
 		if (shouldBroadcast) {
-			socket.emit('canvas_color', { color });
+			socket.emit('color_selected', { color });
 		}
 	}
 
@@ -122,16 +121,15 @@ export function initCanvas() {
 		ctx2d.stroke();
 	}
 
-	function emitLine(x0: number, y0: number, x1: number, y1: number, w: number, h: number) {
+	function emitStroke(x: number, y: number, w: number, h: number, type: 'start' | 'move' | 'end') {
 		const payload: DrawPayload = {
-			x0: x0 / w,
-			y0: y0 / h,
-			x1: x1 / w,
-			y1: y1 / h,
+			x: x / w,
+			y: y / h,
 			color: brush.color,
-			size: brush.size,
+			width: brush.size,
+			type
 		};
-		socket.emit('canvas_draw', payload);
+		socket.emit('draw_stroke', payload);
 	}
 
 	function clearCanvas(localOnly = false) {
@@ -158,7 +156,7 @@ export function initCanvas() {
 		if (!isDrawing || !canDraw) return;
 
 		drawLine(last.x, last.y, pos.x, pos.y, brush.color, brush.size);
-		emitLine(last.x, last.y, pos.x, pos.y, pos.w, pos.h);
+		emitStroke(pos.x, pos.y, pos.w, pos.h, 'move');
 		last = { x: pos.x, y: pos.y };
 	});
 
@@ -169,10 +167,14 @@ export function initCanvas() {
 		last = { x: pos.x, y: pos.y };
 
 		drawLine(pos.x, pos.y, pos.x + 0.01, pos.y + 0.01, brush.color, brush.size);
-		emitLine(pos.x, pos.y, pos.x + 0.01, pos.y + 0.01, pos.w, pos.h);
+		emitStroke(pos.x, pos.y, pos.w, pos.h, 'start');
 	});
 
 	window.addEventListener('pointerup', () => {
+		if (isDrawing && canDraw) {
+			const rect = canvasEl.getBoundingClientRect();
+			emitStroke(last.x, last.y, rect.width, rect.height, 'end');
+		}
 		isDrawing = false;
 	});
 
@@ -190,23 +192,31 @@ export function initCanvas() {
 		});
 	});
 
-	socket.on('canvas_draw', (payload: DrawPayload) => {
+	let remoteLast: { x: number, y: number } | null = null;
+
+	socket.on('draw_stroke', (payload: DrawPayload) => {
 		const rect = canvasEl.getBoundingClientRect();
-		drawLine(
-			payload.x0 * rect.width,
-			payload.y0 * rect.height,
-			payload.x1 * rect.width,
-			payload.y1 * rect.height,
-			payload.color,
-			payload.size
-		);
+		const px = payload.x * rect.width;
+		const py = payload.y * rect.height;
+
+		if (payload.type === 'start') {
+			remoteLast = { x: px, y: py };
+			drawLine(px, py, px + 0.01, py + 0.01, payload.color, payload.width);
+		} else if (payload.type === 'move') {
+			if (remoteLast) {
+				drawLine(remoteLast.x, remoteLast.y, px, py, payload.color, payload.width);
+				remoteLast = { x: px, y: py };
+			}
+		} else if (payload.type === 'end') {
+			remoteLast = null;
+		}
 	});
 
 	socket.on('canvas_clear', () => {
 		clearCanvas(true);
 	});
 
-	socket.on('canvas_color', (payload: ColorPayload) => {
+	socket.on('cursor_update', (payload: ColorPayload) => {
 		setCursorColor(payload.color);
 		if (canDraw) {
 			setActiveSwatch(payload.color);

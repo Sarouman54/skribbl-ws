@@ -7,7 +7,7 @@ export function render(roomState: PublicRoomState) {
   const playersList = document.getElementById('playersList') as HTMLUListElement;
   const startGameBtn = document.getElementById('startGameBtn') as HTMLButtonElement;
 
-  roomInfo.textContent = `Room de ${roomState.ownerUsername} (${roomState.roomId})`;
+  roomInfo.textContent = `Room de ${roomState.host} (${roomState.room_id})`;
   playersList.innerHTML = '';
 
   const sortedPlayers = [...roomState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -27,7 +27,7 @@ export function render(roomState: PublicRoomState) {
 
     const nameSpan = document.createElement('span');
     nameSpan.textContent =
-      player.id === roomState.ownerId ? `${player.username} (hote)` : player.username;
+      player.username === roomState.host ? `${player.username} (hote)` : player.username;
 
     leftGroup.appendChild(rankSpan);
     leftGroup.appendChild(nameSpan);
@@ -41,7 +41,7 @@ export function render(roomState: PublicRoomState) {
     playersList.appendChild(li);
   }
 
-  const isHost = socket.id === roomState.ownerId;
+  const isHost = roomState.players.find(p => p.id === socket.id)?.username === roomState.host;
   startGameBtn.style.display = isHost && playersList.childElementCount >= 2 ? 'block' : 'none';
 }
 

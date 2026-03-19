@@ -59,11 +59,11 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
         socket.on('create_room', (payload: ClientPayload) => {
             const result = roomManager.createRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error', result.error);
+                socket.emit('error', { message: result.error });
                 return;
             }
-            socket.join(result.roomState.roomId);
-            io.to(result.roomState.roomId).emit('room_state', result.roomState);
+            socket.join(result.roomState.room_id);
+            io.to(result.roomState.room_id).emit('room_state', result.roomState);
             broadcastRoomsList(io, roomManager);
         });
 
@@ -80,12 +80,12 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 
                 const result = roomManager.resumePlayer(oldSocketId, socket.id);
                 if (result.ok) {
-                    socket.join(result.roomState.roomId);
-                    io.to(result.roomState.roomId).emit('room_state', result.roomState);
-                    gameManager.updateSocketId(result.roomState.roomId, oldSocketId, socket.id);
+                    socket.join(result.roomState.room_id);
+                    io.to(result.roomState.room_id).emit('room_state', result.roomState);
+                    gameManager.updateSocketId(result.roomState.room_id, oldSocketId, socket.id);
 
-                    const pending = gameManager.getPendingWords(result.roomState.roomId);
-                    if (pending && gameManager.getDrawerId(result.roomState.roomId) === socket.id) {
+                    const pending = gameManager.getPendingWords(result.roomState.room_id);
+                    if (pending && gameManager.getDrawerId(result.roomState.room_id) === socket.id) {
                         socket.emit('send_words', pending);
                     }
                 }
@@ -94,11 +94,11 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 
             const result = roomManager.joinRoom(socket.id, payload);
             if (!result.ok) {
-                socket.emit('error', result.error);
+                socket.emit('error', { message: result.error });
                 return;
             }
-            socket.join(result.roomState.roomId);
-            io.to(result.roomState.roomId).emit('room_state', result.roomState);
+            socket.join(result.roomState.room_id);
+            io.to(result.roomState.room_id).emit('room_state', result.roomState);
             broadcastRoomsList(io, roomManager);
         });
 
@@ -107,7 +107,7 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             if (!roomId) return;
 
             if (!roomManager.isRoomOwner(socket.id)) {
-                socket.emit("error", "Seul l'hôte peut lancer la partie.");
+                socket.emit("error", { message: "Seul l'hôte peut lancer la partie." });
                 return;
             }
 
@@ -117,7 +117,8 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
       gameManager.startGame(roomId, playerIds);
       const drawerId = gameManager.nextDrawer(roomId)!;
       gameManager.startTurn(roomId, drawerId);
-      gameManager.getWords(roomId);
+      const words = gameManager.getWords(roomId);
+      io.to(drawerId).emit('send_words', words);
 
       io.to(roomId).emit("game_started", {
         drawerId,
@@ -162,10 +163,10 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
       }
     });
 
-        socket.on('canvas_draw', (payload: { x0: number; y0: number; x1: number; y1: number; color: string; size: number }) => {
+        socket.on('draw_stroke', (payload: { x: number; y: number; color: string; width: number; type: 'start' | 'move' | 'end' }) => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (!roomId) return;
-            socket.to(roomId).emit('canvas_draw', payload);
+            socket.to(roomId).emit('draw_stroke', payload);
         });
 
         socket.on('canvas_clear', () => {
@@ -174,10 +175,23 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
             io.to(roomId).emit('canvas_clear');
         });
 
-        socket.on('canvas_color', (payload: { color: string }) => {
+        socket.on('color_selected', (payload: { color: string }) => {
             const roomId = roomManager.getRoomIdForSocket(socket.id);
             if (!roomId) return;
-            io.to(roomId).emit('canvas_color', payload);
+
+            const drawerId = gameManager.getDrawerId(roomId);
+            if (socket.id !== drawerId) {
+                socket.emit('error', { message: 'Couleur refusée' });
+                return;
+            }
+
+            const hexRegex = /^#[0-9A-F]{6}$/i;
+            if (!hexRegex.test(payload.color)) {
+                socket.emit('error', { message: 'Format de couleur invalide' });
+                return;
+            }
+
+            io.to(roomId).emit('cursor_update', payload);
         });
 
         socket.on('leave_room', () => {

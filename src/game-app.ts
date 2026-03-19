@@ -30,8 +30,8 @@ if (!stored) {
 		window.location.href = '/';
 	});
 
-	socket.on('error', (message: string) => {
-		showError(message);
+	socket.on('error', (payload: { message: string }) => {
+		showError(payload.message);
 	});
 
 	socket.on('disconnect', () => {

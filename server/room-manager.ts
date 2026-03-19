@@ -20,10 +20,13 @@ type Room = {
 };
 
 export type PublicRoomState = {
-    roomId: string;
-    ownerId: string;
-    ownerUsername: string;
+    room_id: string;
+    host: string;
     players: Player[];
+    max_players: number;
+    status: string;
+    round: number;
+    round_time: number;
 };
 
 export type PublicRoomSummary = {
@@ -48,8 +51,8 @@ export class RoomManager {
         return Array.from(this.rooms.values()).map((room) => {
             const state = this.getPublicRoomState(room);
             return {
-                roomId: state.roomId,
-                ownerUsername: state.ownerUsername,
+                roomId: state.room_id,
+                ownerUsername: state.host,
                 playerCount: state.players.length,
             };
         });
@@ -248,10 +251,13 @@ export class RoomManager {
         const owner = room.players.get(room.ownerId);
 
         return {
-            roomId: room.id,
-            ownerId: room.ownerId,
-            ownerUsername: owner?.username ?? 'Hote',
-            players,
+            room_id: room.id,
+            host: owner?.username ?? 'Hote',
+            players: players,
+            max_players: 8,
+            status: 'waiting',
+            round: 1,
+            round_time: 80
         };
     }
 }
