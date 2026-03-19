@@ -125,68 +125,25 @@ export function init() {
     }
   });
 
-  socket.on("manche_over", () => {
-    const wordToDraw = document.getElementById("wordToDraw") as HTMLElement;
-    if (wordToDraw) {
-      wordToDraw.textContent = "Manche terminée ! Bien joué.";
-    }
-    setChatEnabled(false);
-    if (timerInterval) clearInterval(timerInterval);
-  });
-
-  socket.on("game_over", (finalRoomState: PublicRoomState) => {
-    if (timerInterval) clearInterval(timerInterval);
-    setChatEnabled(false);
-
-    if (gameOverScreen && finalRankingList) {
-      const wordToDraw = document.getElementById("wordToDraw") as HTMLElement;
-      if (wordToDraw) wordToDraw.textContent = "Partie Terminée !";
-
-      finalRankingList.innerHTML = "";
-
-      const sortedPlayers = [...finalRoomState.players].sort(
-        (a, b) => (b.score || 0) - (a.score || 0),
-      );
-
-      for (let i = 0; i < sortedPlayers.length; i++) {
-        const player = sortedPlayers[i];
-        const li = document.createElement("li");
-        li.style.padding = "10px 0";
-        li.style.borderBottom =
-          i < sortedPlayers.length - 1 ? "1px solid #eee" : "none";
-        li.style.display = "flex";
-        li.style.justifyContent = "space-between";
-        li.style.fontWeight = i === 0 ? "bold" : "normal";
-
-        const rankSpan = document.createElement("span");
-        rankSpan.style.color = i === 0 ? "#1abc9c" : "#34495e";
-        rankSpan.textContent = `#${i + 1} ${player.username}`;
-
-        const scoreSpan = document.createElement("span");
-        scoreSpan.style.fontWeight = "bold";
-        scoreSpan.textContent = `${player.score || 0} pts`;
-
-        li.appendChild(rankSpan);
-        li.appendChild(scoreSpan);
-        finalRankingList.appendChild(li);
-      }
-
-      gameOverScreen.classList.remove("hidden");
-    }
-  });
+    socket.on('manche_over', () => {
+        const wordToDraw = document.getElementById('wordToDraw') as HTMLElement;
+        wordToDraw.textContent = 'Manche terminée ! Retour au lobby...';
+        setChatEnabled(false);
+        setTimeout(() => { window.location.href = '/'; }, 3000);
+    });
 }
 
 function showWordChoice(words: [string, string, string]) {
-  const section = document.getElementById("wordChoice") as HTMLElement;
-  const buttons = section.querySelectorAll("button");
+    const section = document.getElementById('wordChoice') as HTMLElement;
+    const buttons = section.querySelectorAll('button');
 
-  words.forEach((word, i) => {
-    buttons[i].textContent = word;
-    buttons[i].onclick = () => {
-      socket.emit("word_chosen", word);
-      section.classList.add("hidden");
-    };
-  });
+    words.forEach((word, i) => {
+        buttons[i].textContent = word;
+        buttons[i].onclick = () => {
+            socket.emit('word_chosen', word);
+            section.classList.add('hidden');
+        };
+    });
 
-  section.classList.remove("hidden");
+    section.classList.remove('hidden');
 }
