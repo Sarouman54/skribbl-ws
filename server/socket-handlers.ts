@@ -102,6 +102,20 @@ export function registerSocketHandlers(io: Server, roomManager: RoomManager, gam
 			chatManager.handleGuess(socket.id, payload);
 		});
 
+		socket.on('canvas_draw', (payload: { x0: number; y0: number; x1: number; y1: number; color: string; size: number }) => {
+			const roomId = roomManager.getRoomIdForSocket(socket.id);
+			if (!roomId) return;
+
+			socket.to(roomId).emit('canvas_draw', payload);
+		});
+
+		socket.on('canvas_clear', () => {
+			const roomId = roomManager.getRoomIdForSocket(socket.id);
+			if (!roomId) return;
+
+			io.to(roomId).emit('canvas_clear');
+		});
+
 		socket.on('disconnect', () => {
 			if (!roomManager.getRoomIdForSocket(socket.id)) return;
 
