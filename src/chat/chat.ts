@@ -1,5 +1,3 @@
-// src/chat.ts
-
 import { socket } from '../utils/socket.ts';
 
 export function initChat(username: string) {
@@ -47,10 +45,19 @@ export function initChat(username: string) {
 			li.style.backgroundColor = '#ffa719cc';
 		}
 		li.style.listStyle = 'none';
+		li.style.padding = '2px 8px';
+            li.style.borderRadius = '4px';
+            li.style.marginBottom = '4px';
 
 		li.appendChild(playerSpan);
 		li.appendChild(textSpan);
+
+		if (chatMessages.children.length === 0) {
+                  li.classList.add('mt-auto');
+            }
+		
 		chatMessages.appendChild(li);
+		chatMessages.scrollTop = chatMessages.scrollHeight;
 	}
 
 }
