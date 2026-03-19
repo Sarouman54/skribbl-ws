@@ -16,53 +16,38 @@
 			<div class="panel">
 				<div class="join-title">Choisis un mot à dessiner</div>
 				<div class="actions">
-					<button type="button"></button>
-					<button type="button"></button>
-					<button type="button"></button>
+					<button type="button" class="border rounded-lg p-2 bg-gray-200"></button>
+					<button type="button" class="border rounded-lg p-2 bg-gray-200"></button>
+					<button type="button" class="border rounded-lg p-2 bg-gray-200"></button>
 				</div>
 			</div>
 		</section>
 
-		<section id="gameView" class="screen">
-			<div class="game-layout">
-				<div class="canvas-panel">
-					<div class="canvas-header">
-						<div id="wordToDraw" class="join-title">En attente du mot...</div>
-						<div class="canvas-controls">
-							<span id="canvasRole" class="muted">Crayon noir par defaut</span>
-							<div id="colorPalette" class="color-palette" aria-label="Palette de couleurs">
-								<button type="button" class="color-swatch is-active" data-color="#000000" title="Noir"></button>
-								<button type="button" class="color-swatch" data-color="#d62828" title="Rouge"></button>
-								<button type="button" class="color-swatch" data-color="#2a9d8f" title="Turquoise"></button>
-								<button type="button" class="color-swatch" data-color="#1d4ed8" title="Bleu"></button>
-								<button type="button" class="color-swatch" data-color="#f59e0b" title="Orange"></button>
-								<button type="button" class="color-swatch" data-color="#8b5cf6" title="Violet"></button>
-							</div>
-							<button id="clearCanvasBtn" type="button" class="small-btn">Effacer</button>
-						</div>
-					</div>
-					<div id="canvasArea" class="canvas-area">
-						<canvas id="drawCanvas"></canvas>
-						<div id="brushCursor" class="brush-cursor"></div>
-					</div>
+		<section id="gameView" class="flex w-full h-[80vh] bg-gray-300 p-2">
+
+			<section class="flex flex-col w-3/4 h-full text-center gap-y-2">
+				<div id="wordToDraw" class="word-to-draw h-6">En attente…</div>
+				<div class="w-full h-8/12 border">Canva</div>
+				<ul id="playersList" class="flex flex-col h-3/12 overflow-y-auto players-list"></ul>
+			</section>
+
+			<section class="flex flex-col w-1/4 gap-y-2">
+				<div class="flex">
+					<div id="gameTimer" class="text-red-600">⏱️ 80s</div>
 				</div>
 
-				<section class="flex flex-col w-1/4 gap-y-2">
-					<ul id="playersList" class="players-list"></ul>
+				<div id="chatComponent" class="w-full h-full border">
+					<ul id="chatMessages" class="flex flex-col w-full h-9/10 overflow-y-auto"></ul>
 
-					<div id="chatComponent" class="w-full h-full border">
-						<ul id="chatMessages" class="flex flex-col w-full h-9/10 overflow-y-auto"></ul>
+					<form id="chatForm" class="flex w-full h-1/10 items-center gap-x-1">
+						<input type="text" id="guessInput" maxlength="50" autocomplete="off" class="w-2/3 border" />
+						<button type="submit" id="sendGuess" class="w-1/3 border rounded-lg">Envoyer</button>
+					</form>
+				</div>
 
-						<form id="chatForm" class="flex w-full h-1/10 items-center p-2">
-							<input type="text" id="guessInput" placeholder="Devinez le mot ici..." maxlength="50"
-								   autocomplete="off"  class="w-2/3 border"/>
-							<button type="submit" id="sendGuess" class="w-1/3 border">Envoyer</button>
-						</form>
-					</div>
+				<button id="leaveGameBtn" type="button" class="border rounded-lg p-2 bg-gray-200">Quitter la partie</button>
+			</section>
 
-					<button id="leaveGameBtn" type="button">Quitter la partie</button>
-				</section>
-			</div>
 		</section>
 	</div>
 
