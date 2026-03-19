@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	root: 'src',
@@ -13,4 +14,7 @@ export default defineConfig({
 		outDir: '../dist',
 		emptyOutDir: true,
 	},
+	plugins: [
+		tailwindcss(),
+	],
 });

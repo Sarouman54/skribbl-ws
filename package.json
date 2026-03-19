@@ -17,8 +17,10 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "tailwindcss": "^4.2.2"
   }
 }
