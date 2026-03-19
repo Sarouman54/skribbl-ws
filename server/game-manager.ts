@@ -4,7 +4,9 @@ type TurnState = {
     drawerId: string;
     word: string | null;
     pendingWords: [string, string, string] | null;
-    guessedBy: Set<string>;
+    guessers: Map<string, { timestamp: number; score: number }>;
+    startTime?: number;
+    totalTime: number;
 };
 
 type GameState = {
@@ -46,7 +48,13 @@ export class GameManager {
     startTurn(roomId: string, drawerId: string): void {
         const state = this.games.get(roomId);
         if (!state) return;
-        state.turn = { drawerId, word: null, pendingWords: null, guessedBy: new Set() };
+        state.turn = { 
+            drawerId, 
+            word: null, 
+            pendingWords: null, 
+            guessers: new Map(), 
+            totalTime: 80 
+        };
     }
 
     setWord(roomId: string, word: string): void {
@@ -54,6 +62,7 @@ export class GameManager {
         if (!state?.turn) return;
         state.turn.word = word;
         state.turn.pendingWords = null;
+        state.turn.startTime = Date.now();
     }
 
     getPendingWords(roomId: string): [string, string, string] | null {
@@ -68,6 +77,37 @@ export class GameManager {
         }
     }
 
+    guessWord(roomId: string, socketId: string): { success: boolean; score?: number; isFirst?: boolean } {
+        const state = this.games.get(roomId);
+        if (!state?.turn || !state.turn.word || !state.turn.startTime) return { success: false };
+
+        if (socketId === state.turn.drawerId) return { success: false };
+        if (state.turn.guessers.has(socketId)) return { success: false };
+
+        const elapsedTime = (Date.now() - state.turn.startTime) / 1000;
+        const timeLeft = Math.max(0, state.turn.totalTime - elapsedTime);
+
+        let score = 100 + (400 * timeLeft / state.turn.totalTime);
+        score = Math.round(score);
+
+        const isFirst = state.turn.guessers.size === 0;
+        if (isFirst) score += 50;
+
+        state.turn.guessers.set(socketId, { timestamp: Date.now(), score });
+        return { success: true, score, isFirst };
+    }
+
+    getDrawerScore(roomId: string, totalPlayers: number): number {
+        const state = this.games.get(roomId);
+        if (!state?.turn || totalPlayers <= 1) return 0;
+
+        const nSuccess = state.turn.guessers.size;
+        if (nSuccess === 0) return 0;
+
+        const score = 300 * (nSuccess / (totalPlayers - 1));
+        return Math.round(score);
+    }
+
     getWord(roomId: string): string | null {
         return this.games.get(roomId)?.turn?.word ?? null;
     }
@@ -76,17 +116,8 @@ export class GameManager {
         return this.games.get(roomId)?.turn?.drawerId ?? null;
     }
 
-    recordGuess(roomId: string, socketId: string): boolean {
-        const state = this.games.get(roomId);
-        if (!state?.turn) return false;
-        if (state.turn.drawerId === socketId) return false;
-        if (state.turn.guessedBy.has(socketId)) return false;
-        state.turn.guessedBy.add(socketId);
-        return true;
-    }
-
     getGuessedCount(roomId: string): number {
-        return this.games.get(roomId)?.turn?.guessedBy.size ?? 0;
+        return this.games.get(roomId)?.turn?.guessers.size ?? 0;
     }
 
     getWords(roomId: string): [string, string, string] {
@@ -110,6 +141,7 @@ export class GameManager {
 
         return words;
     }
+
 
     deleteGame(roomId: string): void {
         this.games.delete(roomId);

@@ -10,6 +10,7 @@ export type JoinRoomPayload = {
 export type Player = {
     id: string;
     username: string;
+    score: number;
 };
 
 type Room = {
@@ -90,7 +91,7 @@ export class RoomManager {
         const room: Room = {
             id: roomId,
             ownerId: socketId,
-            players: new Map([[socketId, { id: socketId, username }]]),
+            players: new Map([[socketId, { id: socketId, username, score: 0 }]]),
         };
 
         this.rooms.set(roomId, room);
@@ -129,7 +130,7 @@ export class RoomManager {
             return { ok: false, error: 'Ce pseudo est deja pris dans cette room.' };
         }
 
-        room.players.set(socketId, { id: socketId, username });
+        room.players.set(socketId, { id: socketId, username, score: 0 });
         this.socketToRoom.set(socketId, room.id);
 
         return { ok: true, roomState: this.getPublicRoomState(room) };
@@ -199,6 +200,27 @@ export class RoomManager {
         }
 
         return { roomId, roomState: this.getPublicRoomState(room) };
+    }
+
+    updatePlayerScore(roomId: string, socketId: string, points: number): void {
+        const room = this.rooms.get(roomId);
+        if (!room) return;
+        const player = room.players.get(socketId);
+        if (!player) return;
+        player.score += points;
+    }
+
+    resetScores(roomId: string): void {
+        const room = this.rooms.get(roomId);
+        if (!room) return;
+        for (const player of room.players.values()) {
+            player.score = 0;
+        }
+    }
+
+    getPublicRoomStateById(roomId: string): PublicRoomState | null {
+        const room = this.rooms.get(roomId);
+        return room ? this.getPublicRoomState(room) : null;
     }
 
     private sanitizeUsername(username: string): string {

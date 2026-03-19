@@ -25,6 +25,11 @@
 
 		<section id="gameView" class="flex w-full h-[80vh] gap-4 mt-4 bg-gray-300 p-2">
 
+			<div
+				style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 10px; padding: 0 10px;">
+				<div id="gameTimer" style="font-weight: bold; color: #e74c3c; font-size: 1.1rem;">⏱️ 80s</div>
+			</div>
+
 			<div id="wordToDraw" class="word-to-draw">En attente…</div>
 
 			<section class="flex flex-col w-1/4 gap-y-2">
@@ -43,6 +48,7 @@
 
 		</section>
 	</div>
+
 	<script type="module" src="./game-app.ts"></script>
 </body>
 

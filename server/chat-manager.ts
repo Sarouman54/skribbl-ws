@@ -1,55 +1,62 @@
-import { Server } from 'socket.io';
-import { RoomManager } from './room-manager.ts';
-import { GameManager } from './game-manager.ts';
-import { getLevenshteinDistance } from '../src/utils/math.ts';
+import { Server } from "socket.io";
+import { RoomManager } from "./room-manager";
+import { GameManager } from "./game-manager";
+import { getLevenshteinDistance } from "../src/utils/math";
 
 export class ChatManager {
-    private io: Server;
-    private roomManager: RoomManager;
-    private gameManager: GameManager;
+	constructor(
+		private io: Server,
+		private roomManager: RoomManager,
+		private gameManager: GameManager
+	) {}
 
-    constructor(io: Server, roomManager: RoomManager, gameManager: GameManager) {
-        this.io = io;
-        this.roomManager = roomManager;
-        this.gameManager = gameManager;
-    }
+	handleGuess(socketId: string, payload: { player: string; text: string }): { isCorrect: boolean; recorded: boolean } {
+		const roomId = this.roomManager.getRoomIdForSocket(socketId);
+		if (!roomId) return { isCorrect: false, recorded: false };
 
-    handleGuess(socketId: string, payload: { player: string; text: string }): { isCorrect: boolean; recorded: boolean } {
-        const roomId = this.roomManager.getRoomIdForSocket(socketId);
-        if (!roomId) return { isCorrect: false, recorded: false };
+		const text = payload.text.trim();
+		const player = payload.player;
 
-        const text = payload.text.trim();
-        const player = payload.player;
+		if (this.gameManager.getDrawerId(roomId) === socketId) {
+			return { isCorrect: false, recorded: false };
+		}
 
-        if (this.gameManager.getDrawerId(roomId) === socketId) {
-            return { isCorrect: false, recorded: false };
-        }
+		const secretWord = this.gameManager.getWord(roomId);
 
-        const secretWord = this.gameManager.getWord(roomId);
+		// Si pas de mot secret (partie non lancée), on traite comme un chat normal
+		if (!secretWord) {
+			this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
+			return { isCorrect: false, recorded: false };
+		}
 
-        if (!secretWord) {
-            this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
-            return { isCorrect: false, recorded: false };
-        }
+		const isCorrect = (text.toLowerCase() === secretWord.toLowerCase());
+		const isAlmostCorrect = !isCorrect && (getLevenshteinDistance(text.toLowerCase(), secretWord.toLowerCase()) === 1);
 
-        const isCorrect = text.toLowerCase() === secretWord.toLowerCase();
-        const isAlmostCorrect = !isCorrect && getLevenshteinDistance(text.toLowerCase(), secretWord.toLowerCase()) === 1;
+		if (isCorrect) {
+			const result = this.gameManager.guessWord(roomId, socketId);
+			if (result.success) {
+				// Mettre à jour le score du Guesser
+				this.roomManager.updatePlayerScore(roomId, socketId, result.score || 0);
 
-        if (isCorrect) {
-            const recorded = this.gameManager.recordGuess(roomId, socketId);
-            if (!recorded) {
-                return { isCorrect: true, recorded: false };
-            }
-            this.io.to(roomId).emit('guess_success', { player, text: `${player} a trouvé le mot !` });
-            return { isCorrect: true, recorded: true };
-        }
+				// Émettre le succès
+				this.io.to(roomId).emit('guess_success', { player, text: `${player} a trouvé le mot !` });
 
-        if (isAlmostCorrect) {
-            this.io.to(roomId).emit('chat_message', { player, text, type: 'almost' });
-        } else {
-            this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
-        }
+				// Diffuser le nouvel état avec scores
+				const roomState = this.roomManager.getPublicRoomStateById(roomId);
+				if (roomState) {
+					this.io.to(roomId).emit('room_state', roomState);
+				}
+				return { isCorrect: true, recorded: true };
+			} else {
+				// Déjà deviné ou dessinateur
+				return { isCorrect: true, recorded: false };
+			}
+		} else if (isAlmostCorrect) {
+			this.io.to(roomId).emit('chat_message', { player, text: `${player} est proche du mot !`, type: 'almost' });
+		} else {
+			this.io.to(roomId).emit('chat_message', { player, text, type: 'normal' });
+		}
 
-        return { isCorrect: false, recorded: false };
-    }
+		return { isCorrect: false, recorded: false };
+	}
 }

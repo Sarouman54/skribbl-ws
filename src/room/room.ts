@@ -10,15 +10,34 @@ export function render(roomState: PublicRoomState) {
   roomInfo.textContent = `Room de ${roomState.ownerUsername} (${roomState.roomId})`;
   playersList.innerHTML = '';
 
-  for (const player of roomState.players) {
+  const sortedPlayers = [...roomState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  for (let i = 0; i < sortedPlayers.length; i++) {
+    const player = sortedPlayers[i];
     const li = document.createElement('li');
     li.className = 'player-item';
 
-    const label = document.createElement('span');
-    label.textContent =
+    const leftGroup = document.createElement('div');
+    leftGroup.style.display = 'flex';
+    leftGroup.style.alignItems = 'center';
+
+    const rankSpan = document.createElement('span');
+    rankSpan.className = 'player-rank';
+    rankSpan.textContent = `#${i + 1}`;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent =
       player.id === roomState.ownerId ? `${player.username} (hote)` : player.username;
 
-    li.appendChild(label);
+    leftGroup.appendChild(rankSpan);
+    leftGroup.appendChild(nameSpan);
+
+    const scoreSpan = document.createElement('span');
+    scoreSpan.className = 'player-score';
+    scoreSpan.textContent = `${player.score || 0} pt`;
+
+    li.appendChild(leftGroup);
+    li.appendChild(scoreSpan);
     playersList.appendChild(li);
   }
 
