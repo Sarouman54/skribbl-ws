@@ -1,23 +1,10 @@
 import { socket } from '../utils/socket.ts';
-
-type DrawPayload = {
-	x0: number;
-	y0: number;
-	x1: number;
-	y1: number;
-	color: string;
-	size: number;
-};
-
-type ColorPayload = {
-	color: string;
-};
-
-type FillPayload = {
-	x: number;
-	y: number;
-	color: string;
-};
+import {
+	encodeDraw, decodeDraw,
+	encodeFill, decodeFill,
+	encodeColor, decodeColor,
+} from '../utils/codec.ts';
+import type { DrawNet, FillNet, ColorNet } from '../utils/codec.ts';
 
 type Tool = 'brush' | 'fill' | 'eraser';
 
@@ -95,7 +82,7 @@ export function initCanvas() {
 			setCursorColor(color);
 		}
 		if (shouldBroadcast) {
-			socket.emit('canvas_color', { color });
+			socket.emit('canvas_color', encodeColor({ color }));
 		}
 	}
 
@@ -240,24 +227,11 @@ export function initCanvas() {
 
 	function emitLine(x0: number, y0: number, x1: number, y1: number, w: number, h: number) {
 		const style = currentStrokeStyle();
-		const payload: DrawPayload = {
-			x0: x0 / w,
-			y0: y0 / h,
-			x1: x1 / w,
-			y1: y1 / h,
-			color: style.color,
-			size: style.size,
-		};
-		socket.emit('canvas_draw', payload);
+		socket.emit('canvas_draw', encodeDraw({ x0: x0 / w, y0: y0 / h, x1: x1 / w, y1: y1 / h, color: style.color, size: style.size }));
 	}
 
 	function emitFill(x: number, y: number, w: number, h: number, color: string) {
-		const payload: FillPayload = {
-			x: x / w,
-			y: y / h,
-			color,
-		};
-		socket.emit('canvas_fill', payload);
+		socket.emit('canvas_fill', encodeFill({ x: x / w, y: y / h, color }));
 	}
 
 	function clearCanvas(localOnly = false) {
@@ -335,7 +309,8 @@ export function initCanvas() {
 		});
 	});
 
-	socket.on('canvas_draw', (payload: DrawPayload) => {
+	socket.on('canvas_draw', (raw: DrawNet) => {
+		const payload = decodeDraw(raw);
 		const rect = canvasEl.getBoundingClientRect();
 		drawLine(
 			payload.x0 * rect.width,
@@ -347,7 +322,8 @@ export function initCanvas() {
 		);
 	});
 
-	socket.on('canvas_fill', (payload: FillPayload) => {
+	socket.on('canvas_fill', (raw: FillNet) => {
+		const payload = decodeFill(raw);
 		const rect = canvasEl.getBoundingClientRect();
 		floodFill(payload.x * rect.width, payload.y * rect.height, payload.color);
 	});
@@ -356,7 +332,8 @@ export function initCanvas() {
 		clearCanvas(true);
 	});
 
-	socket.on('canvas_color', (payload: ColorPayload) => {
+	socket.on('canvas_color', (raw: ColorNet) => {
+		const payload = decodeColor(raw);
 		if (selectedTool !== 'eraser') {
 			setCursorColor(payload.color);
 		}

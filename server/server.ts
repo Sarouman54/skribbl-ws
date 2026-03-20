@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import * as customParser from 'socket.io-msgpack-parser';
 import { createServer as createViteServer } from 'vite';
 import { RoomManager } from './room-manager.ts';
 import { GameManager } from './game-manager.ts';
@@ -9,7 +10,7 @@ import { ChatManager } from './chat-manager.ts';
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer);
+const io = new Server(httpServer, { parser: customParser });
 
 const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });
 app.use(vite.middlewares);
